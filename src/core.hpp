@@ -38,6 +38,8 @@ namespace ets2_la_plugin
 
         void tick() const;
 
+        bool init_truck_steering_manipulation() const;
+
         CHooksManager *get_hooks_manager() const { return this->hooks_manager_; }
 
         // TODO: change to file only or something

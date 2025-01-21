@@ -13,13 +13,37 @@
 #include "prism/traffic/game_traffic.hpp"
 #include "prism/traffic/traffic_ai_trailer.hpp"
 
+#include "hooks/function_hook.hpp"
+#include "prism/functions.hpp"
+#include "prism/vehicles/game_physics_vehicle.hpp"
+
 namespace ets2_la_plugin
 {
     CCore *CCore::g_instance = nullptr;
+    std::shared_ptr<CFunctionHook> steering_advance_hook = nullptr;
+
+    // set these 2 from remote connection
+    bool should_override_user_steering_input = false;
+    float custom_steering_angle = 0.0f;
 
     SCSAPI_VOID telemetry_tick(const scs_event_t event, const void *const event_info, scs_context_t context)
     {
         CCore::g_instance->tick();
+    }
+
+    /**
+     * \brief Hook for prism::game_physics_vehicle_u::steering_advance so we can override the user input
+     * \param self /
+     * \return /
+     */
+    uint64_t hk_steering_advance(prism::game_physics_vehicle_u *self)
+    {
+        if (should_override_user_steering_input)
+        {
+            self->steering = custom_steering_angle;
+        }
+
+        return steering_advance_hook->get_original<prism::game_physics_vehicle_u_steering_advance_fn>()(self);
     }
 
     CCore::CCore(const scs_telemetry_init_params_v101_t *init_params) : init_params_(init_params)
@@ -120,6 +144,27 @@ namespace ets2_la_plugin
         this->get_ai_traffic_data();
     }
 
+    bool CCore::init_truck_steering_manipulation() const
+    {
+        // using pattern instead of the vtable hook that I used previously, this way we don't have to keep checking in a loop until a vehicle exists
+        const auto physics_vehicle_u_steering_advance_fn_address = memory::get_address_for_pattern(patterns::physics_vehicle_u_steering_advance);
+
+        steering_advance_hook = g_instance->get_hooks_manager()->register_function_hook(
+            "physics_vehicle_u::steering_advance",
+            physics_vehicle_u_steering_advance_fn_address,
+            reinterpret_cast<uint64_t>(&hk_steering_advance));
+
+        if (steering_advance_hook->hook() != CHook::HOOKED)
+        {
+            g_instance->error("Could not hook the physics_vehicle_u::steering_advance function");
+            return false;
+        }
+
+        g_instance->debug("Found physics_vehicle_u::steering_advance function @ +{:x}", memory::as_offset(physics_vehicle_u_steering_advance_fn_address));
+
+        return true;
+    }
+
     bool CCore::init()
     {
         MH_Initialize();
@@ -140,6 +185,12 @@ namespace ets2_la_plugin
         if (this->init_params_->register_for_event(SCS_TELEMETRY_EVENT_frame_end, telemetry_tick, nullptr) != SCS_RESULT_ok)
         {
             this->error("Could not register for frame_end event");
+            return false;
+        }
+
+        if (!this->init_truck_steering_manipulation())
+        {
+            this->error("Could not initialize truck steering data");
             return false;
         }
 
