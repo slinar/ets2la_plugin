@@ -25,26 +25,47 @@ namespace ets2_la_plugin
 {
     // Plugin input memory implementation
     HANDLE input_h_map_file;
-    const int input_float_count = 1;
-    const int input_bool_count = 1;
-    const int input_int_count = 1;
+    HANDLE camera_h_map_file;
     const wchar_t* input_mem_name = L"Local\\ETS2LAPluginInput";
-    const size_t bool_size = input_bool_count * sizeof(bool);
-    const size_t float_size = input_float_count * sizeof(float);
-    const size_t int_size = input_int_count * sizeof(int);
-    const size_t size = float_size + bool_size + int_size;
+    const wchar_t* camera_mem_name = L"Local\\ETS2LACameraProps";
 
-    // Function to initialize shared memory
-    void CCore::initialize_mem() const {
-        input_h_map_file = CreateFileMapping(
+    // Initialize a shared memory file.
+    // format:
+    // f - float
+    // b - bool
+    // i - int
+    // s - short
+    void CCore::initialize_memory_file(wchar_t* file_name, wchar_t* format, HANDLE& output_h_map_file) const {
+        size_t size = 0;
+        for (int i = 0; format[i] != '\0'; i++)
+        {
+            if (format[i] == 'f')
+            {
+                size += sizeof(float);
+            }
+            else if (format[i] == 'b')
+            {
+                size += sizeof(bool);
+            }
+            else if (format[i] == 'i')
+            {
+                size += sizeof(int);
+            }
+            else if (format[i] == 's')
+            {
+                size += sizeof(short);
+            }
+        }
+        
+        output_h_map_file = CreateFileMapping(
             INVALID_HANDLE_VALUE,    // use paging file
             NULL,                    // default security
             PAGE_READWRITE,          // read/write access
             0,                       // maximum object size (high-order DWORD)
             size,                    // maximum object size (low-order DWORD)
-            input_mem_name);                // name of mapping object
+            file_name);                // name of mapping object
 
-        if (input_h_map_file == NULL) {
+        if (output_h_map_file == NULL) {
             DWORD dw = GetLastError();
             std::stringstream ss;
             ss << dw;
@@ -53,57 +74,96 @@ namespace ets2_la_plugin
             return;
         }
 
-        void* pBuf = MapViewOfFile(input_h_map_file, FILE_MAP_ALL_ACCESS, 0, 0, size);
+        void* pBuf = MapViewOfFile(output_h_map_file, FILE_MAP_ALL_ACCESS, 0, 0, size);
 
         if (pBuf == NULL) {
             this->error("Failed to map view of file.");
-            CloseHandle(input_h_map_file);
-            input_h_map_file = NULL;
+            CloseHandle(output_h_map_file);
+            output_h_map_file = NULL;
             return;
         }
 
-        float data[input_bool_count + input_float_count + input_int_count] = {};
-        for (int i = 0; i < input_bool_count + input_float_count; i++)
+        int offset = 0;
+        for (int i = 0; format[i] != '\0'; i++)
         {
-            if (i < input_float_count)
+            if (format[i] == 'f')
             {
-                data[i] = 0.0;
+                float f = 0.0f;
+                memcpy(static_cast<char*>(pBuf) + offset, &f, sizeof(float));
+                offset += sizeof(float);
             }
-            else if (i < input_float_count + input_bool_count)
+            else if (format[i] == 'b')
             {
-                data[i] = false;
+                bool b = false;
+                memcpy(static_cast<char*>(pBuf) + offset, &b, sizeof(bool));
+                offset += sizeof(bool);
             }
-            else
+            else if (format[i] == 'i')
             {
-                data[i] = 0;
+                int n = 0;
+                memcpy(static_cast<char*>(pBuf) + offset, &n, sizeof(int));
+                offset += sizeof(int);
+            }
+            else if (format[i] == 's')
+            {
+                short s = 0;
+                memcpy(static_cast<char*>(pBuf) + offset, &s, sizeof(short));
+                offset += sizeof(short);
             }
         }
-        memcpy(pBuf, data, size);
 
         UnmapViewOfFile(pBuf);
-
-        this->info("Successfully opened shared mem file.");
+        
+        std::wstring wformat(format);
+        std::string sformat(wformat.begin(), wformat.end());
+        std::stringstream log_message;
+        log_message << "Successfully opened shared mem file with size " << size << " and format " << sformat;
+        this->info(log_message.str().c_str());
     }
 
-    // Function to read shared memory
-    MemData CCore::read_mem() const {
+    // Read the input memory file
+    InputMemData CCore::read_input_mem() const {
         if (input_h_map_file == NULL) {
             this->error("Shared mem file not open.");
-            return MemData();
+            return InputMemData();
         }
 
-        void* pBuf = MapViewOfFile(input_h_map_file, FILE_MAP_ALL_ACCESS, 0, 0, size);
+        void* pBuf = MapViewOfFile(input_h_map_file, FILE_MAP_ALL_ACCESS, 0, 0, 9);
 
-        std::array<float, input_float_count> float_data;
-        std::array<bool, input_bool_count> bool_data;
-        std::array<int, input_int_count> int_data;
+        float steering = 0.0f;
+        bool override_steering = false;
+        int timestamp = 0;
 
-        memcpy(float_data.data(), static_cast<char*>(pBuf), float_size);
-        memcpy(bool_data.data(), static_cast<char*>(pBuf) + float_size, bool_size);
-        memcpy(int_data.data(), static_cast<char*>(pBuf) + float_size + bool_size, int_size);
+        steering = *reinterpret_cast<float*>(static_cast<char*>(pBuf));
+        override_steering = *reinterpret_cast<bool*>(static_cast<char*>(pBuf) + 4);
+        timestamp = *reinterpret_cast<int*>(static_cast<char*>(pBuf) + 5);
 
         UnmapViewOfFile(pBuf);
-        return MemData{ float_data, bool_data, int_data };
+
+        return InputMemData{ steering, override_steering, timestamp };
+    }
+
+    // Output camera data to the shared memory file
+    void CCore::write_camera_mem(const CameraMemData data) const {
+        if (camera_h_map_file == NULL) {
+            this->error("Shared mem file not open.");
+            return;
+        }
+
+        void* pBuf = MapViewOfFile(camera_h_map_file, FILE_MAP_ALL_ACCESS, 0, 0, 36);
+
+        memcpy(static_cast<char*>(pBuf), &data.fov, sizeof(float));
+        memcpy(static_cast<char*>(pBuf) + 4, &data.pos_x, sizeof(float));
+        memcpy(static_cast<char*>(pBuf) + 8, &data.pos_y, sizeof(float));
+        memcpy(static_cast<char*>(pBuf) + 12, &data.pos_z, sizeof(float));
+        memcpy(static_cast<char*>(pBuf) + 16, &data.cx, sizeof(int16_t));
+        memcpy(static_cast<char*>(pBuf) + 18, &data.cz, sizeof(int16_t));
+        memcpy(static_cast<char*>(pBuf) + 20, &data.qw, sizeof(float));
+        memcpy(static_cast<char*>(pBuf) + 24, &data.qx, sizeof(float));
+        memcpy(static_cast<char*>(pBuf) + 28, &data.qy, sizeof(float));
+        memcpy(static_cast<char*>(pBuf) + 32, &data.qz, sizeof(float));
+
+        UnmapViewOfFile(pBuf);
     }
 
     CCore *CCore::g_instance = nullptr;
@@ -161,8 +221,19 @@ namespace ets2_la_plugin
         if (current_camera != nullptr)
         {
             // get all wanted data from current camera
-            current_camera->camera_fov;
-            current_camera->placement;
+            CameraMemData data;
+            data.fov = current_camera->camera_fov;
+            data.pos_x = current_camera->placement.pos.x;
+            data.pos_y = current_camera->placement.pos.y;
+            data.pos_z = current_camera->placement.pos.z;
+            data.cx = current_camera->placement.cx;
+            data.cz = current_camera->placement.cz;
+            data.qw = current_camera->placement.rot.w;
+            data.qx = current_camera->placement.rot.x;
+            data.qy = current_camera->placement.rot.y;
+            data.qz = current_camera->placement.rot.z;
+
+            this->write_camera_mem(data);
         }
         // or loop all cameras to get data from all of them
         for (const auto *camera : camera_manager->cameras)
@@ -230,11 +301,12 @@ namespace ets2_la_plugin
         this->get_ai_traffic_data();
 
         // Get steering data from the shared memory file
-        MemData data = this->read_mem();
+        InputMemData data = this->read_input_mem();
 
-        should_override_user_steering_input = data.bools[0];
-        custom_steering_angle = data.floats[0];
-        int timestamp = data.ints[0];
+        should_override_user_steering_input = data.override_steering;
+        custom_steering_angle = data.steering;
+
+        int timestamp = data.timestamp;
         int current_time = std::time(0);
         if (current_time - timestamp > 1) // Data is over a second old
         {
@@ -280,7 +352,9 @@ namespace ets2_la_plugin
             return false;
         }
 
-        this->initialize_mem(); // Initialize shared memory file
+        // ETS2LA specific memory files
+        this->initialize_memory_file(const_cast<wchar_t*>(input_mem_name), L"fbi", input_h_map_file);
+        this->initialize_memory_file(const_cast<wchar_t*>(camera_mem_name), L"ffffssffff", camera_h_map_file);
 
         if (this->init_params_->register_for_event(SCS_TELEMETRY_EVENT_frame_end, telemetry_tick, nullptr) != SCS_RESULT_ok)
         {

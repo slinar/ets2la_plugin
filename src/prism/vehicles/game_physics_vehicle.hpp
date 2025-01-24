@@ -32,7 +32,7 @@ namespace ets2_la_plugin::prism
         float brake_temps; //0x0EA8 (0x04)
         float brake_input; //0x0EAC (0x04)
         char pad_0EB0[ 568 ]; //0x0EB0 (0x238)
-        float steering; //0x10E8 (0x04)
+        float physics_steering; //0x10E8 (0x04)
         char pad_10EC[ 24 ]; //0x10EC (0x18)
         float throttle; //0x1104 (0x04)
         float throttle_2; //0x1108 (0x04)

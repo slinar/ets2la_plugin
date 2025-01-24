@@ -13,7 +13,15 @@ Please see the [original repository](https://github.com/dariowouters/ts-extra-ut
             math.floor(time.time()) # Current timestamp
         )
     ```
-- [ ] Expose a virtual memory file at `Local\ETS2LACameraProps` to get the current camera properties from the game.
+- [x] Expose a virtual memory file at `Local\ETS2LACameraProps` to get the current camera properties from the game.
+    ```python
+    import time, mmap
+    buf = mmap.mmap(0, 36, r"Local\ETS2LACameraProps")
+    while True:
+        format = "=ffffhhffff"
+        data = struct.unpack(format, buf[:36])
+        data # fov, x, y, z, cx, cz, qw, qx, qy, qz
+    ```
 - [ ] Expose a virtual memory file at `Local\ETS2LATraffic` to get the closest 20 traffic vehicles.
 
 # Credits

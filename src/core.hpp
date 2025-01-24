@@ -1,5 +1,6 @@
 ﻿#pragma once
 
+#include <windows.h>
 #include "scssdk_telemetry.h"
 #include "fmt/core.h"
 #include "array"
@@ -15,11 +16,26 @@ namespace ets2_la_plugin
         class game_actor_u;
     };
 
-    struct MemData // TODO: Get float_count and bool_count from the .cpp file
+    struct InputMemData
     {
-        std::array<float, 1> floats;
-        std::array<bool, 1> bools;
-        std::array<int, 1> ints;
+        float steering;
+        bool override_steering;
+        int timestamp;
+    };
+
+    struct CameraMemData
+    {
+        float fov;   // 0
+        float pos_x; // 4
+        float pos_y; // 8
+        float pos_z; // 12
+        int16_t cx;  // 16 
+        int16_t cz;  // 18
+        float qw;    // 20
+        float qx;    // 24
+        float qy;    // 28
+        float qz;    // 32
+                     // 36
     };
 
     class CCore
@@ -35,8 +51,9 @@ namespace ets2_la_plugin
         scs_value_dplacement_t truck_pos;
 
         // Virtual memory file
-        void initialize_mem() const;
-        MemData read_mem() const;
+        void initialize_memory_file(wchar_t* file_name, wchar_t* format, HANDLE& output_h_map_file) const;
+        InputMemData read_input_mem() const;
+        void write_camera_mem(const CameraMemData data) const;
 
         static CCore *g_instance;
 
