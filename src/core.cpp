@@ -17,6 +17,8 @@
 #include "prism/functions.hpp"
 #include "prism/vehicles/game_physics_vehicle.hpp"
 
+#include <ctime>
+
 #include <array>
 
 namespace ets2_la_plugin
@@ -25,10 +27,12 @@ namespace ets2_la_plugin
     HANDLE input_h_map_file;
     const int input_float_count = 1;
     const int input_bool_count = 1;
+    const int input_int_count = 1;
     const wchar_t* input_mem_name = L"Local\\ETS2LAPluginInput";
-    const size_t boot_size = input_bool_count * sizeof(bool);
+    const size_t bool_size = input_bool_count * sizeof(bool);
     const size_t float_size = input_float_count * sizeof(float);
-    const size_t size = float_size + boot_size;
+    const size_t int_size = input_int_count * sizeof(int);
+    const size_t size = float_size + bool_size + int_size;
 
     // Function to initialize shared memory
     void CCore::initialize_mem() const {
@@ -58,16 +62,20 @@ namespace ets2_la_plugin
             return;
         }
 
-        float data[input_bool_count + input_float_count] = {};
+        float data[input_bool_count + input_float_count + input_int_count] = {};
         for (int i = 0; i < input_bool_count + input_float_count; i++)
         {
             if (i < input_float_count)
             {
                 data[i] = 0.0;
             }
-            else
+            else if (i < input_float_count + input_bool_count)
             {
                 data[i] = false;
+            }
+            else
+            {
+                data[i] = 0;
             }
         }
         memcpy(pBuf, data, size);
@@ -78,22 +86,24 @@ namespace ets2_la_plugin
     }
 
     // Function to read shared memory
-    std::pair<std::array<float, input_float_count>, std::array<bool, input_bool_count>> CCore::read_mem() const {
+    MemData CCore::read_mem() const {
         if (input_h_map_file == NULL) {
             this->error("Shared mem file not open.");
-            return std::make_pair(std::array<float, input_float_count>{}, std::array<bool, input_bool_count>{});
+            return MemData();
         }
 
         void* pBuf = MapViewOfFile(input_h_map_file, FILE_MAP_ALL_ACCESS, 0, 0, size);
 
         std::array<float, input_float_count> float_data;
         std::array<bool, input_bool_count> bool_data;
+        std::array<int, input_int_count> int_data;
 
-        memcpy(float_data.data(), pBuf, float_size);
-        memcpy(bool_data.data(), static_cast<char*>(pBuf) + float_size, boot_size);
+        memcpy(float_data.data(), static_cast<char*>(pBuf), float_size);
+        memcpy(bool_data.data(), static_cast<char*>(pBuf) + float_size, bool_size);
+        memcpy(int_data.data(), static_cast<char*>(pBuf) + float_size + bool_size, int_size);
 
         UnmapViewOfFile(pBuf);
-        return std::make_pair(float_data, bool_data);
+        return MemData{ float_data, bool_data, int_data };
     }
 
     CCore *CCore::g_instance = nullptr;
@@ -220,12 +230,16 @@ namespace ets2_la_plugin
         this->get_ai_traffic_data();
 
         // Get steering data from the shared memory file
-        std::pair<std::array<float, input_float_count>, std::array<bool, input_bool_count>> data = this->read_mem();
-        std::array<float, input_float_count> floats = data.first;
-        std::array<bool, input_bool_count> bools = data.second;
+        MemData data = this->read_mem();
 
-        should_override_user_steering_input = bools[0];
-        custom_steering_angle = floats[0];
+        should_override_user_steering_input = data.bools[0];
+        custom_steering_angle = data.floats[0];
+        int timestamp = data.ints[0];
+        int current_time = std::time(0);
+        if (current_time - timestamp > 1) // Data is over a second old
+        {
+            should_override_user_steering_input = false;
+        }
     }
 
     bool CCore::init_truck_steering_manipulation() const

@@ -2,6 +2,7 @@
 
 #include "scssdk_telemetry.h"
 #include "fmt/core.h"
+#include "array"
 
 #include "managers/hooks_manager.hpp"
 
@@ -12,6 +13,13 @@ namespace ets2_la_plugin
     {
         class base_ctrl_u;
         class game_actor_u;
+    };
+
+    struct MemData // TODO: Get float_count and bool_count from the .cpp file
+    {
+        std::array<float, 1> floats;
+        std::array<bool, 1> bools;
+        std::array<int, 1> ints;
     };
 
     class CCore
@@ -28,7 +36,7 @@ namespace ets2_la_plugin
 
         // Virtual memory file
         void initialize_mem() const;
-        std::pair<std::array<float, 1>, std::array<bool, 1>> read_mem() const; // TODO: Get float_count and bool_count from the .cpp file
+        MemData read_mem() const;
 
         static CCore *g_instance;
 
