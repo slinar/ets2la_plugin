@@ -17,8 +17,85 @@
 #include "prism/functions.hpp"
 #include "prism/vehicles/game_physics_vehicle.hpp"
 
+#include <array>
+
 namespace ets2_la_plugin
 {
+    // Plugin input memory implementation
+    HANDLE input_h_map_file;
+    const int input_float_count = 1;
+    const int input_bool_count = 1;
+    const wchar_t* input_mem_name = L"Local\\ETS2LAPluginInput";
+    const size_t boot_size = input_bool_count * sizeof(bool);
+    const size_t float_size = input_float_count * sizeof(float);
+    const size_t size = float_size + boot_size;
+
+    // Function to initialize shared memory
+    void CCore::initialize_mem() const {
+        input_h_map_file = CreateFileMapping(
+            INVALID_HANDLE_VALUE,    // use paging file
+            NULL,                    // default security
+            PAGE_READWRITE,          // read/write access
+            0,                       // maximum object size (high-order DWORD)
+            size,                    // maximum object size (low-order DWORD)
+            input_mem_name);                // name of mapping object
+
+        if (input_h_map_file == NULL) {
+            DWORD dw = GetLastError();
+            std::stringstream ss;
+            ss << dw;
+            std::string message = "Failed to create file mapping. Error code: " + ss.str();
+            this->error(message.c_str());
+            return;
+        }
+
+        void* pBuf = MapViewOfFile(input_h_map_file, FILE_MAP_ALL_ACCESS, 0, 0, size);
+
+        if (pBuf == NULL) {
+            this->error("Failed to map view of file.");
+            CloseHandle(input_h_map_file);
+            input_h_map_file = NULL;
+            return;
+        }
+
+        float data[input_bool_count + input_float_count] = {};
+        for (int i = 0; i < input_bool_count + input_float_count; i++)
+        {
+            if (i < input_float_count)
+            {
+                data[i] = 0.0;
+            }
+            else
+            {
+                data[i] = false;
+            }
+        }
+        memcpy(pBuf, data, size);
+
+        UnmapViewOfFile(pBuf);
+
+        this->info("Successfully opened shared mem file.");
+    }
+
+    // Function to read shared memory
+    std::pair<std::array<float, input_float_count>, std::array<bool, input_bool_count>> CCore::read_mem() const {
+        if (input_h_map_file == NULL) {
+            this->error("Shared mem file not open.");
+            return std::make_pair(std::array<float, input_float_count>{}, std::array<bool, input_bool_count>{});
+        }
+
+        void* pBuf = MapViewOfFile(input_h_map_file, FILE_MAP_ALL_ACCESS, 0, 0, size);
+
+        std::array<float, input_float_count> float_data;
+        std::array<bool, input_bool_count> bool_data;
+
+        memcpy(float_data.data(), pBuf, float_size);
+        memcpy(bool_data.data(), static_cast<char*>(pBuf) + float_size, boot_size);
+
+        UnmapViewOfFile(pBuf);
+        return std::make_pair(float_data, bool_data);
+    }
+
     CCore *CCore::g_instance = nullptr;
     std::shared_ptr<CFunctionHook> steering_advance_hook = nullptr;
 
@@ -140,8 +217,15 @@ namespace ets2_la_plugin
     void CCore::tick() const
     {
         this->get_camera_data();
-
         this->get_ai_traffic_data();
+
+        // Get steering data from the shared memory file
+        std::pair<std::array<float, input_float_count>, std::array<bool, input_bool_count>> data = this->read_mem();
+        std::array<float, input_float_count> floats = data.first;
+        std::array<bool, input_bool_count> bools = data.second;
+
+        should_override_user_steering_input = bools[0];
+        custom_steering_angle = floats[0];
     }
 
     bool CCore::init_truck_steering_manipulation() const
@@ -181,6 +265,8 @@ namespace ets2_la_plugin
             this->error("Could not register for truck world_placement channel");
             return false;
         }
+
+        this->initialize_mem(); // Initialize shared memory file
 
         if (this->init_params_->register_for_event(SCS_TELEMETRY_EVENT_frame_end, telemetry_tick, nullptr) != SCS_RESULT_ok)
         {

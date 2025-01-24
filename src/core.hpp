@@ -26,6 +26,10 @@ namespace ets2_la_plugin
         // just putting this here whatever
         scs_value_dplacement_t truck_pos;
 
+        // Virtual memory file
+        void initialize_mem() const;
+        std::pair<std::array<float, 1>, std::array<bool, 1>> read_mem() const; // TODO: Get float_count and bool_count from the .cpp file
+
         static CCore *g_instance;
 
         CCore(const scs_telemetry_init_params_v101_t *init_params);
