@@ -12,13 +12,17 @@
 #include "prism/camera/camera_manager.hpp"
 #include "prism/traffic/game_traffic.hpp"
 #include "prism/traffic/traffic_ai_trailer.hpp"
+#include "prism/traffic/traffic_ai_vehicle.hpp"
 
 #include "hooks/function_hook.hpp"
 #include "prism/functions.hpp"
 #include "prism/vehicles/game_physics_vehicle.hpp"
 
 #include <ctime>
+#include <cmath>
 
+#include <vector>
+#include <algorithm>
 #include <array>
 
 namespace ets2_la_plugin
@@ -26,8 +30,10 @@ namespace ets2_la_plugin
     // Plugin input memory implementation
     HANDLE input_h_map_file;
     HANDLE camera_h_map_file;
+    HANDLE traffic_h_map_file;
     const wchar_t* input_mem_name = L"Local\\ETS2LAPluginInput";
     const wchar_t* camera_mem_name = L"Local\\ETS2LACameraProps";
+    const wchar_t* traffic_mem_name = L"Local\\ETS2LATraffic";
 
     // Initialize a shared memory file.
     // format:
@@ -36,6 +42,12 @@ namespace ets2_la_plugin
     // i - int
     // s - short
     void CCore::initialize_memory_file(wchar_t* file_name, wchar_t* format, HANDLE& output_h_map_file) const {
+        std::wstring wformat(format);
+        std::string sformat(wformat.begin(), wformat.end());
+        std::stringstream log_message;
+        log_message << "Opening shared memory file with format " << sformat;
+        this->info(log_message.str().c_str());
+
         size_t size = 0;
         for (int i = 0; format[i] != '\0'; i++)
         {
@@ -114,11 +126,7 @@ namespace ets2_la_plugin
 
         UnmapViewOfFile(pBuf);
         
-        std::wstring wformat(format);
-        std::string sformat(wformat.begin(), wformat.end());
-        std::stringstream log_message;
-        log_message << "Successfully opened shared mem file with size " << size << " and format " << sformat;
-        this->info(log_message.str().c_str());
+        this->info("Successfully opened shared mem file with size {}", size);
     }
 
     // Read the input memory file
@@ -162,6 +170,53 @@ namespace ets2_la_plugin
         memcpy(static_cast<char*>(pBuf) + 24, &data.qx, sizeof(float));
         memcpy(static_cast<char*>(pBuf) + 28, &data.qy, sizeof(float));
         memcpy(static_cast<char*>(pBuf) + 32, &data.qz, sizeof(float));
+
+        UnmapViewOfFile(pBuf);
+    }
+
+    void CCore::write_traffic_mem(const TrafficMemData data) const 
+    {
+        if (traffic_h_map_file == NULL) 
+        {
+            this->error("Traffic shared mem file not open.");
+            return;
+        }
+
+        void* pBuf = MapViewOfFile(traffic_h_map_file, FILE_MAP_ALL_ACCESS, 0, 0, sizeof(TrafficMemData));
+        int offset = 0;
+
+        for (int i = 0; i < 20; i++) 
+        {
+            memcpy(static_cast<char*>(pBuf) + offset, &data.vehicles[i].vehicle.x, sizeof(float));
+            memcpy(static_cast<char*>(pBuf) + offset + 4, &data.vehicles[i].vehicle.y, sizeof(float));
+            memcpy(static_cast<char*>(pBuf) + offset + 8, &data.vehicles[i].vehicle.z, sizeof(float));
+            memcpy(static_cast<char*>(pBuf) + offset + 12, &data.vehicles[i].vehicle.qw, sizeof(float));
+            memcpy(static_cast<char*>(pBuf) + offset + 16, &data.vehicles[i].vehicle.qx, sizeof(float));
+            memcpy(static_cast<char*>(pBuf) + offset + 20, &data.vehicles[i].vehicle.qy, sizeof(float));
+            memcpy(static_cast<char*>(pBuf) + offset + 24, &data.vehicles[i].vehicle.qz, sizeof(float));
+            memcpy(static_cast<char*>(pBuf) + offset + 28, &data.vehicles[i].vehicle.width, sizeof(float));
+            memcpy(static_cast<char*>(pBuf) + offset + 32, &data.vehicles[i].vehicle.height, sizeof(float));
+            memcpy(static_cast<char*>(pBuf) + offset + 36, &data.vehicles[i].vehicle.length, sizeof(float));
+            memcpy(static_cast<char*>(pBuf) + offset + 40, &data.vehicles[i].vehicle.speed, sizeof(float));
+            memcpy(static_cast<char*>(pBuf) + offset + 44, &data.vehicles[i].vehicle.acceleration, sizeof(float));
+            memcpy(static_cast<char*>(pBuf) + offset + 48, &data.vehicles[i].vehicle.trailer_count, sizeof(short));
+            offset += 50;
+
+            for (int j = 0; j < 2; j++) // Trailers
+            {
+                memcpy(static_cast<char*>(pBuf) + offset, &data.vehicles[i].trailers[j].x, sizeof(float));
+                memcpy(static_cast<char*>(pBuf) + offset + 4, &data.vehicles[i].trailers[j].y, sizeof(float));
+                memcpy(static_cast<char*>(pBuf) + offset + 8, &data.vehicles[i].trailers[j].z, sizeof(float));
+                memcpy(static_cast<char*>(pBuf) + offset + 12, &data.vehicles[i].trailers[j].qw, sizeof(float));
+                memcpy(static_cast<char*>(pBuf) + offset + 16, &data.vehicles[i].trailers[j].qx, sizeof(float));
+                memcpy(static_cast<char*>(pBuf) + offset + 20, &data.vehicles[i].trailers[j].qy, sizeof(float));
+                memcpy(static_cast<char*>(pBuf) + offset + 24, &data.vehicles[i].trailers[j].qz, sizeof(float));
+                memcpy(static_cast<char*>(pBuf) + offset + 28, &data.vehicles[i].trailers[j].width, sizeof(float));
+                memcpy(static_cast<char*>(pBuf) + offset + 32, &data.vehicles[i].trailers[j].height, sizeof(float));
+                memcpy(static_cast<char*>(pBuf) + offset + 36, &data.vehicles[i].trailers[j].length, sizeof(float));
+                offset += 40;
+            }
+        }
 
         UnmapViewOfFile(pBuf);
     }
@@ -244,35 +299,82 @@ namespace ets2_la_plugin
 
     void CCore::get_ai_traffic_data() const
     {
-        auto *game_traffic = prism::game_traffic_u::get();
+        auto* game_traffic = prism::game_traffic_u::get();
 
         if (game_traffic == nullptr)
             return;
 
         const auto truck_pos = this->truck_pos; // our truck position from the SDK telemetry
+        const auto truck_x = truck_pos.position.x;
+        const auto truck_y = truck_pos.position.y;
+        const auto truck_z = truck_pos.position.z;
 
-        // seems like once a spawned_vehicle_t is created in the array it is not removed even if that vehicle has despawned
-        // ai_vehicle.vehicle->traffic_vehicle and physics_data will be nullptr when it has despawned
-        for (const auto &ai_vehicle : game_traffic->ai_vehicles)
+        struct ai_vehicle_sort {
+            const prism::spawned_vehicle_t* ai_vehicle;
+            float distance;
+        };
+
+        std::vector<ai_vehicle_sort> sorted_ai_vehicles;
+
+        for (const auto& ai_vehicle : game_traffic->ai_vehicles)
         {
             if (ai_vehicle.vehicle == nullptr || ai_vehicle.vehicle->traffic_vehicle == nullptr || ai_vehicle.vehicle->physics_data == nullptr)
                 continue;
 
-            // ai vehicle world coordinates
             const auto ai_x = ai_vehicle.vehicle->placement.cx * 512 + ai_vehicle.vehicle->placement.pos.x;
             const auto ai_y = ai_vehicle.vehicle->placement.pos.y;
             const auto ai_z = ai_vehicle.vehicle->placement.cz * 512 + ai_vehicle.vehicle->placement.pos.z;
 
-            const auto ai_rotation = ai_vehicle.vehicle->placement.rot;
+            const float dx = ai_x - truck_x;
+            const float dy = ai_y - truck_y;
+            const float dz = ai_z - truck_z;
+            const float distance = std::sqrt(dx * dx + dy * dy + dz * dz);
 
-            // ai vehicle bounding box
-            const auto &truck_bb = ai_vehicle.vehicle->physics_data->bounding_box; // (width, height, length)
+            sorted_ai_vehicles.push_back({ &ai_vehicle, distance });
+        }
+
+        // Sort the vector based on the distance
+        std::sort(sorted_ai_vehicles.begin(), sorted_ai_vehicles.end(), [](const ai_vehicle_sort& a, const ai_vehicle_sort& b) {
+            return a.distance < b.distance;
+        });
+
+        std::array<TrafficVehicleObject, 20> vehicles = {};
+
+        int i = 0;
+        for (const auto& vehicle_data : sorted_ai_vehicles)
+        {
+            if (i >= 20)
+            {
+                break;
+            }
+
+            TrafficVehicleObject vehicle_object = {};
+            TrafficVehicle& vehicle = vehicle_object.vehicle;
+            const auto& ai_vehicle = *vehicle_data.ai_vehicle;
+
+            vehicle.x = ai_vehicle.vehicle->placement.cx * 512 + ai_vehicle.vehicle->placement.pos.x;
+            vehicle.y = ai_vehicle.vehicle->placement.pos.y;
+            vehicle.z = ai_vehicle.vehicle->placement.cz * 512 + ai_vehicle.vehicle->placement.pos.z;
+
+            vehicle.qw = ai_vehicle.vehicle->placement.rot.w;
+            vehicle.qx = ai_vehicle.vehicle->placement.rot.x;
+            vehicle.qy = ai_vehicle.vehicle->placement.rot.y;
+            vehicle.qz = ai_vehicle.vehicle->placement.rot.z;
+
+            vehicle.width = ai_vehicle.vehicle->physics_data->bounding_box.x;
+            vehicle.height = ai_vehicle.vehicle->physics_data->bounding_box.y;
+            vehicle.length = ai_vehicle.vehicle->physics_data->bounding_box.z;
+
+            vehicle.speed = ai_vehicle.vehicle->physics_data->speed;
+            vehicle.acceleration = ai_vehicle.vehicle->physics_data->acceleration;
+
+            vehicle.trailer_count = 0;
 
             ai_vehicle.vehicle->physics_data->speed; // m/s
-            ai_vehicle.vehicle->physics_data->acceleration;
+            ai_vehicle.vehicle->physics_data->acceleration; // m/s^2
 
-            const auto *trailer = ai_vehicle.vehicle->trailer;
-            // go through all slave trailers
+            const auto* trailer = ai_vehicle.vehicle->trailer;
+
             while (trailer != nullptr)
             {
                 if (trailer->physics_data == nullptr)
@@ -280,19 +382,37 @@ namespace ets2_la_plugin
                     break;
                 }
 
-                // ai trailer world coordinates
-                const auto ai_trailer_x = trailer->placement.cx * 512 + trailer->placement.pos.x;
-                const auto ai_trailer_y = trailer->placement.pos.y;
-                const auto ai_trailer_z = trailer->placement.cz * 512 + trailer->placement.pos.z;
+                if (vehicle.trailer_count >= 2)
+                {
+                    break;
+                }
 
-                const auto ai_trailer_rotation = trailer->placement.rot;
+                TrafficTrailer& trailer_data = vehicle_object.trailers[vehicle.trailer_count];
 
-                // trailer bounding box
-                const auto &trailer_bb = trailer->physics_data->bounding_box; // (width, height, length)
+                trailer_data.x = trailer->placement.cx * 512 + trailer->placement.pos.x;
+                trailer_data.y = trailer->placement.pos.y;
+                trailer_data.z = trailer->placement.cz * 512 + trailer->placement.pos.z;
+
+                trailer_data.qw = trailer->placement.rot.w;
+                trailer_data.qx = trailer->placement.rot.x;
+                trailer_data.qy = trailer->placement.rot.y;
+                trailer_data.qz = trailer->placement.rot.z;
+
+                trailer_data.width = trailer->physics_data->bounding_box.x;
+                trailer_data.height = trailer->physics_data->bounding_box.y;
+                trailer_data.length = trailer->physics_data->bounding_box.z;
 
                 trailer = trailer->slave_trailer;
+
+                vehicle.trailer_count++;
             }
+
+            vehicles[i] = vehicle_object;
+            i++;
         }
+
+        TrafficMemData data = { vehicles };
+        this->write_traffic_mem(data);
     }
 
     void CCore::tick() const
@@ -335,6 +455,50 @@ namespace ets2_la_plugin
         return true;
     }
 
+    void CCore::create_traffic_memory(const wchar_t* traffic_mem_name, HANDLE& traffic_h_map_file) const {
+        //                   xyz    whl  tc
+        wchar_t* vehicle = L"ffffffffffffs"; // 50 bytes
+        //                      wxyz   sa
+
+        //                   xyz    whl
+        wchar_t* trailer = L"ffffffffff";    // 40 bytes
+        //                      wxyz
+
+        // Concatenate vehicle + trailer + trailer
+        size_t vehicle_len = wcslen(vehicle);
+        size_t trailer_len = wcslen(trailer);
+        size_t vehicle_object_len = vehicle_len + 2 * trailer_len + 1; // +1 for null terminator
+
+        wchar_t* vehicle_object = (wchar_t*)malloc(vehicle_object_len * sizeof(wchar_t));
+        if (!vehicle_object) {
+            this->error("Memory allocation failed for vehicle_object");
+            return;
+        }
+
+        wcscpy(vehicle_object, vehicle); // Copy vehicle
+        wcscat(vehicle_object, trailer); // Append trailer
+        wcscat(vehicle_object, trailer); // Append trailer again
+
+        int vehicle_count = 20;
+        size_t total_len = vehicle_count * vehicle_object_len + 1; // +1 for null terminator
+
+        wchar_t* total_vehicle_format = (wchar_t*)malloc(total_len * sizeof(wchar_t));
+        if (!total_vehicle_format) {
+            this->error("Memory allocation failed for total_vehicle_format");
+            free(vehicle_object);
+            return;
+        }
+
+        total_vehicle_format[0] = L'\0'; // Initialize as an empty string
+        for (int i = 0; i < vehicle_count; i++) {
+            wcscat(total_vehicle_format, vehicle_object);
+        }
+
+        this->initialize_memory_file(const_cast<wchar_t*>(traffic_mem_name), total_vehicle_format, traffic_h_map_file);
+        free(vehicle_object);
+        free(total_vehicle_format);
+    }
+
     bool CCore::init()
     {
         MH_Initialize();
@@ -355,6 +519,7 @@ namespace ets2_la_plugin
         // ETS2LA specific memory files
         this->initialize_memory_file(const_cast<wchar_t*>(input_mem_name), L"fbi", input_h_map_file);
         this->initialize_memory_file(const_cast<wchar_t*>(camera_mem_name), L"ffffssffff", camera_h_map_file);
+        this->create_traffic_memory(const_cast<wchar_t*>(traffic_mem_name), traffic_h_map_file);
 
         if (this->init_params_->register_for_event(SCS_TELEMETRY_EVENT_frame_end, telemetry_tick, nullptr) != SCS_RESULT_ok)
         {

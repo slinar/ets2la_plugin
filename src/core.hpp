@@ -38,6 +38,48 @@ namespace ets2_la_plugin
                      // 36
     };
 
+    struct TrafficVehicle
+    {
+        float x;
+        float y;
+        float z;
+        float qw;
+        float qx;
+        float qy;
+        float qz;
+        float width;
+        float height;
+        float length;
+        float speed;
+        float acceleration;
+        short trailer_count;
+    };
+
+    struct TrafficTrailer
+    {
+        float x;
+        float y;
+        float z;
+        float qw;
+        float qx;
+        float qy;
+        float qz;
+        float width;
+        float height;
+        float length;
+    };
+
+    struct TrafficVehicleObject
+    {
+        TrafficVehicle vehicle;
+        TrafficTrailer trailers[2];
+    };
+
+    struct TrafficMemData
+    {
+        std::array<TrafficVehicleObject, 20> vehicles;
+    };
+
     class CCore
     {
     private:
@@ -54,6 +96,8 @@ namespace ets2_la_plugin
         void initialize_memory_file(wchar_t* file_name, wchar_t* format, HANDLE& output_h_map_file) const;
         InputMemData read_input_mem() const;
         void write_camera_mem(const CameraMemData data) const;
+        void create_traffic_memory(const wchar_t* traffic_mem_name, HANDLE& traffic_h_map_file) const;
+        void write_traffic_mem(const TrafficMemData data) const;
 
         static CCore *g_instance;
 
