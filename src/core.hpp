@@ -53,6 +53,7 @@ namespace ets2_la_plugin
         float speed;
         float acceleration;
         short trailer_count;
+        short id;
     };
 
     struct TrafficTrailer

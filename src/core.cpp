@@ -24,6 +24,7 @@
 #include <vector>
 #include <algorithm>
 #include <array>
+#include <map>
 
 namespace ets2_la_plugin
 {
@@ -200,7 +201,8 @@ namespace ets2_la_plugin
             memcpy(static_cast<char*>(pBuf) + offset + 40, &data.vehicles[i].vehicle.speed, sizeof(float));
             memcpy(static_cast<char*>(pBuf) + offset + 44, &data.vehicles[i].vehicle.acceleration, sizeof(float));
             memcpy(static_cast<char*>(pBuf) + offset + 48, &data.vehicles[i].vehicle.trailer_count, sizeof(short));
-            offset += 50;
+            memcpy(static_cast<char*>(pBuf) + offset + 50, &data.vehicles[i].vehicle.id, sizeof(short));
+            offset += 52;
 
             for (int j = 0; j < 2; j++) // Trailers
             {
@@ -297,6 +299,8 @@ namespace ets2_la_plugin
         }
     }
 
+    #include <map> // Include map instead of unordered_map
+
     void CCore::get_ai_traffic_data() const
     {
         auto* game_traffic = prism::game_traffic_u::get();
@@ -312,10 +316,16 @@ namespace ets2_la_plugin
         struct ai_vehicle_sort {
             const prism::spawned_vehicle_t* ai_vehicle;
             float distance;
+            int id;
         };
 
         std::vector<ai_vehicle_sort> sorted_ai_vehicles;
 
+        // Static map to store unique IDs for each vehicle
+        static std::map<const prism::spawned_vehicle_t*, int> vehicle_uids;
+        static int next_vehicle_id = 0;
+
+        int i = 0;
         for (const auto& ai_vehicle : game_traffic->ai_vehicles)
         {
             if (ai_vehicle.vehicle == nullptr || ai_vehicle.vehicle->traffic_vehicle == nullptr || ai_vehicle.vehicle->physics_data == nullptr)
@@ -330,7 +340,13 @@ namespace ets2_la_plugin
             const float dz = ai_z - truck_z;
             const float distance = std::sqrt(dx * dx + dy * dy + dz * dz);
 
-            sorted_ai_vehicles.push_back({ &ai_vehicle, distance });
+            // Assign a persistent unique ID if the vehicle doesn't already have one
+            if (vehicle_uids.find(&ai_vehicle) == vehicle_uids.end()) {
+                vehicle_uids[&ai_vehicle] = next_vehicle_id++;
+            }
+
+            sorted_ai_vehicles.push_back({ &ai_vehicle, distance, vehicle_uids[&ai_vehicle] });
+            i++;
         }
 
         // Sort the vector based on the distance
@@ -340,7 +356,7 @@ namespace ets2_la_plugin
 
         std::array<TrafficVehicleObject, 20> vehicles = {};
 
-        int i = 0;
+        i = 0;
         for (const auto& vehicle_data : sorted_ai_vehicles)
         {
             if (i >= 20)
@@ -370,8 +386,7 @@ namespace ets2_la_plugin
 
             vehicle.trailer_count = 0;
 
-            ai_vehicle.vehicle->physics_data->speed; // m/s
-            ai_vehicle.vehicle->physics_data->acceleration; // m/s^2
+            vehicle.id = vehicle_data.id; // Persistent unique ID
 
             const auto* trailer = ai_vehicle.vehicle->trailer;
 
@@ -457,8 +472,8 @@ namespace ets2_la_plugin
 
     void CCore::create_traffic_memory(const wchar_t* traffic_mem_name, HANDLE& traffic_h_map_file) const {
         //                   xyz    whl  tc
-        wchar_t* vehicle = L"ffffffffffffs"; // 50 bytes
-        //                      wxyz   sa
+        wchar_t* vehicle = L"ffffffffffffss"; // 52 bytes
+        //                      wxyz  sa  id
 
         //                   xyz    whl
         wchar_t* trailer = L"ffffffffff";    // 40 bytes
