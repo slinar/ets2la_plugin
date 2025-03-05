@@ -14,6 +14,7 @@ namespace ets2_la_plugin
     {
         class base_ctrl_u;
         class game_actor_u;
+        class traffic_object_t;
     };
 
     struct InputMemData
@@ -29,7 +30,7 @@ namespace ets2_la_plugin
         float pos_x; // 4
         float pos_y; // 8
         float pos_z; // 12
-        int16_t cx;  // 16 
+        int16_t cx;  // 16
         int16_t cz;  // 18
         float qw;    // 20
         float qx;    // 24
@@ -106,6 +107,9 @@ namespace ets2_la_plugin
         ~CCore();
         void get_camera_data() const;
         void get_ai_traffic_data() const;
+
+        void get_traffic_objects_data() const;
+        void get_navigation_data() const;
 
         bool init();
         void destroy();

@@ -9,10 +9,22 @@
 
 #include <common/scssdk_telemetry_truck_common_channels.h>
 
+#include "prism/controllers/base_ctrl.hpp"
+#include "prism/controllers/game_ctrl.hpp"
 #include "prism/camera/camera_manager.hpp"
 #include "prism/traffic/game_traffic.hpp"
 #include "prism/traffic/traffic_ai_trailer.hpp"
 #include "prism/traffic/traffic_ai_vehicle.hpp"
+#include "prism/traffic/traffic_objects.hpp"
+#include "prism/traffic/traffic_rules.hpp"
+
+#include "prism/management/item/kdop_item.hpp"
+#include "prism/management/item/node_item.hpp"
+#include "prism/management/item/prefab_item.hpp"
+#include "prism/management/item/segment.hpp"
+#include "prism/management/item/semaphore_instance.hpp"
+
+#include "prism/navigation/route_task.hpp"
 
 #include "hooks/function_hook.hpp"
 #include "prism/functions.hpp"
@@ -69,7 +81,7 @@ namespace ets2_la_plugin
                 size += sizeof(short);
             }
         }
-        
+
         output_h_map_file = CreateFileMapping(
             INVALID_HANDLE_VALUE,    // use paging file
             NULL,                    // default security
@@ -126,7 +138,7 @@ namespace ets2_la_plugin
         }
 
         UnmapViewOfFile(pBuf);
-        
+
         this->info("Successfully opened shared mem file with size {}", size);
     }
 
@@ -175,9 +187,9 @@ namespace ets2_la_plugin
         UnmapViewOfFile(pBuf);
     }
 
-    void CCore::write_traffic_mem(const TrafficMemData data) const 
+    void CCore::write_traffic_mem(const TrafficMemData data) const
     {
-        if (traffic_h_map_file == NULL) 
+        if (traffic_h_map_file == NULL)
         {
             this->error("Traffic shared mem file not open.");
             return;
@@ -186,7 +198,7 @@ namespace ets2_la_plugin
         void* pBuf = MapViewOfFile(traffic_h_map_file, FILE_MAP_ALL_ACCESS, 0, 0, sizeof(TrafficMemData));
         int offset = 0;
 
-        for (int i = 0; i < 20; i++) 
+        for (int i = 0; i < 20; i++)
         {
             memcpy(static_cast<char*>(pBuf) + offset, &data.vehicles[i].vehicle.x, sizeof(float));
             memcpy(static_cast<char*>(pBuf) + offset + 4, &data.vehicles[i].vehicle.y, sizeof(float));
@@ -430,10 +442,125 @@ namespace ets2_la_plugin
         this->write_traffic_mem(data);
     }
 
+    void CCore::get_traffic_objects_data() const
+    {
+        auto* base_ctrl = prism::base_ctrl_u::get();
+
+        if (base_ctrl == nullptr) return;
+
+        auto traffic_objects = std::vector<const prism::traffic_object_t*>();
+
+        for (const auto *kdop_item : base_ctrl->some_nearby_kdop_items)
+        {
+            if (kdop_item->item_type != 4) // we only want prefabs
+            {
+                if (kdop_item->item_type > 4)
+                {
+                    break; // items seem to be ordered by item type, so we can stop looping after going through all prefabs
+                }
+                continue;
+            }
+            const auto prefab_kdop_item = static_cast<const prism::prefab_item_t *>(kdop_item);
+
+            if (prefab_kdop_item->segment == nullptr)
+            {
+                continue;
+            }
+
+            for (const auto &semaphore_instance : prefab_kdop_item->segment->semaphore_instances)
+            {
+                if (semaphore_instance.actor == nullptr || semaphore_instance.actor->get_type() != 0x07) // we only want type 0x07 (traffic_semaphore_actor_t)
+                {
+                    continue;
+                }
+                traffic_objects.emplace_back(semaphore_instance.actor);
+
+            }
+        }
+
+        auto* game_traffic = prism::game_traffic_u::get();
+
+        if (game_traffic != nullptr)
+        {
+            for (const auto* traffic_object : game_traffic->traffic_objects)
+            {
+                if (traffic_object->get_type() != 0x07)
+                {
+                    continue; // we only want type 0x07 (traffic_semaphore_actor_t)
+                }
+                traffic_objects.emplace_back(traffic_object);
+            }
+        }
+
+        for (const auto traffic_object : traffic_objects)
+        {
+            const auto* semaphore_actor = static_cast<const prism::traffic_semaphore_actor_t*>(traffic_object);
+
+            // semaphore_actor->placement; // the object's position and rotation
+
+            if (semaphore_actor->traffic_rule != nullptr && semaphore_actor->traffic_rule->get_type() == prism::traffic_light_t::ID)
+            {
+                const auto* traffic_light = static_cast<const prism::traffic_light_t*>(semaphore_actor->traffic_rule);
+
+                // uint32_t state = traffic_light->state; // 0 = off, 1 = orange_to_red, 2 = red, 4 = orange_to_green, 8 = green, 32 = sleep (blinking orange)
+                // float time_left_until_change = traffic_light->state_time_remaining;
+            }
+            else // gates
+            {
+                // uint8_t state = semaphore_actor->state; // 0 = closing; 1 = closed; 3 = open; 2 = opening
+
+                if (semaphore_actor->animation_mode == 2)
+                {
+                    // float time_left_until_opened = semaphore_actor->open_time_remaining; // time left until open
+                    // float time_left_until_closed = semaphore_actor->close_time_remaining; // time left until closed
+                } else {
+                    // float time_left_until_end_of_current_state = semaphore_actor->animation_time_elapsed; // time left until end of current state
+                }
+            }
+        }
+    }
+
+    void CCore::get_navigation_data() const
+    {
+        auto *gps_manager = prism::gps_manager_t::get();
+
+        if (gps_manager == nullptr)
+        {
+            return;
+        }
+
+        // route_task is nullptr when no route is set
+        if (gps_manager->simple_route_source.route_task != nullptr)
+        {
+            // entire gps route node to node
+            for (const auto &route_item : gps_manager->simple_route_source.route_task->physical_route_items)
+            {
+                // float x = route_item.node->coords.x / 256.f;
+                // float y = route_item.node->coords.y / 256.f;
+                // float z = route_item.node->coords.z / 256.f;
+            }
+        }
+
+        for (const auto &waypoint : gps_manager->waypoints)
+        {
+            // float x = waypoint.node->coords.x / 256.f;
+            // float y = waypoint.node->coords.y / 256.f;
+            // float z = waypoint.node->coords.z / 256.f;
+        }
+        for (const auto &waypoint : gps_manager->avoid_waypoints)
+        {
+            // float x = waypoint.node->coords.x / 256.f;
+            // float y = waypoint.node->coords.y / 256.f;
+            // float z = waypoint.node->coords.z / 256.f;
+        }
+    }
+
     void CCore::tick() const
     {
         this->get_camera_data();
         this->get_ai_traffic_data();
+        this->get_traffic_objects_data();
+        this->get_navigation_data();
 
         // Get steering data from the shared memory file
         InputMemData data = this->read_input_mem();
