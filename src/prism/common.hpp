@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cstdint>
+
 #pragma pack(push, 1)
 
 namespace ets2_la_plugin
@@ -53,6 +55,15 @@ namespace ets2_la_plugin
     };
 
     static_assert(sizeof( quat_t ) == 0x10);
+
+    struct int3_t // size: 0x000c
+    {
+        int x; // 0x0000 (0x04)
+        int y; // 0x0004 (0x04)
+        int z; // 0x0008 (0x04)
+    };
+
+    static_assert(sizeof( int3_t ) == 0x0c);
 
     namespace prism
     {

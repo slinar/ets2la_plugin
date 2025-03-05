@@ -1,7 +1,8 @@
 #pragma once
+#include "unit_descriptor.hpp"
 #include <cstdint>
 
-#pragma pack(push, 1)
+#pragma pack( push, 1 )
 namespace ets2_la_plugin::prism
 {
     class unit_t
@@ -14,7 +15,7 @@ namespace ets2_la_plugin::prism
         virtual void destructor();
         virtual void destroy();
         virtual void clone();
-        virtual char*** get_unit_descriptor();
+        virtual unit_descriptor_t* get_unit_descriptor();
         virtual void vfunc_4();
         virtual void vfunc_5();
         virtual void pre_save();
@@ -23,6 +24,6 @@ namespace ets2_la_plugin::prism
         virtual void post_load();
     };
 
-    static_assert(sizeof( unit_t ) == 0x10, "unit_t is incorrect in size");
+    static_assert( sizeof( unit_t ) == 0x10, "unit_t is incorrect in size" );
 }
-#pragma pack(pop)
+#pragma pack( pop )
