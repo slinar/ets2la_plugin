@@ -41,45 +41,71 @@ namespace ets2_la_plugin
 
     struct TrafficVehicle
     {
-        float x;
-        float y;
-        float z;
-        float qw;
-        float qx;
-        float qy;
-        float qz;
-        float width;
-        float height;
-        float length;
-        float speed;
-        float acceleration;
-        short trailer_count;
-        short id;
+        float x;               // 0
+        float y;               // 4    
+        float z;               // 8
+        float qw;              // 12
+        float qx;              // 16
+        float qy;              // 20
+        float qz;              // 24
+        float width;           // 28
+        float height;          // 32
+        float length;          // 36
+        float speed;           // 40
+        float acceleration;    // 44
+        short trailer_count;   // 48
+        short id;              // 52
+                               // 56
     };
 
     struct TrafficTrailer
     {
-        float x;
-        float y;
-        float z;
-        float qw;
-        float qx;
-        float qy;
-        float qz;
-        float width;
-        float height;
-        float length;
+        float x;        // 0
+        float y;        // 4
+        float z;        // 8
+        float qw;       // 12
+        float qx;       // 16
+        float qy;       // 20
+        float qz;       // 24
+        float width;    // 28
+        float height;   // 32
+        float length;   // 36
+                        // 40
     };
 
     struct TrafficVehicleObject
     {
-        TrafficVehicle vehicle;
-        TrafficTrailer trailers[2];
+        TrafficVehicle vehicle;      // 0
+        TrafficTrailer trailers[2];  // 56
+                                     // 136
     };
 
     struct TrafficMemData
     {
-        std::array<TrafficVehicleObject, 20> vehicles;
+        std::array<TrafficVehicleObject, 20> vehicles; // 2720
+    };
+
+    struct SemaphoreObject
+    {
+        float x;                // 0
+        float y;                // 4
+        float z;                // 8
+        float cx;               // 12
+        float cz;               // 16
+        float qw;               // 20
+        float qx;               // 24
+        float qy;               // 28
+        float qz;               // 32
+        int type;               // 36
+        float time_remaining;   // 40
+        int state;              // 44
+        int id;                 // 48
+                                // 52
+    };
+
+    struct SemaphoreMemData
+    {
+        std::array<SemaphoreObject, 20> semaphores; // 1040
     };
 
     class CCore
@@ -99,7 +125,9 @@ namespace ets2_la_plugin
         InputMemData read_input_mem() const;
         void write_camera_mem(const CameraMemData data) const;
         void create_traffic_memory(const wchar_t* traffic_mem_name, HANDLE& traffic_h_map_file) const;
+        void create_semaphore_memory(const wchar_t* semaphore_mem_name, HANDLE& semaphore_h_map_file) const;
         void write_traffic_mem(const TrafficMemData data) const;
+        void write_semaphore_mem(const SemaphoreMemData data) const;
 
         static CCore *g_instance;
 

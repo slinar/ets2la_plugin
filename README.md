@@ -39,6 +39,36 @@ Please see the [original repository](https://github.com/dariowouters/ts-extra-ut
         # x, y, z, qw, qx, qy, qz, width, height, length
     ```
 
+- [x] Expose a virtual memory file at `Local\ETS2LASemaphore` to get the closest 20 traffic lights and gates.
+    ```python
+    import time, mmap
+    buf = mmap.mmap(0, 1040, r"Local\ETS2LASemaphore")
+
+    # Traffic light states
+    OFF = 0
+    ORANGE_TO_RED = 1
+    RED = 2
+    ORANGE_TO_GREEN = 4
+    GREEN = 8
+    SLEEP = 32
+
+    # Gate states
+    CLOSING = 0
+    CLOSED = 1
+    OPENING = 2
+    OPEN = 3
+
+    while True:
+        semaphore_format = "fffffffffifii"
+        total_format = "=" + semaphore_format * 20
+        data = struct.unpack(total_format, buf[:1040])
+        data # (semaphore_format) * 20
+        # traffic_light (index 9 == 1):
+        # x, y, z, cx, cz, qw, qx, qy, qz, type, time_remaining (in state), state, id
+        # gate (index 9 == 2):
+        # x, y, z, cx, cz, qw, qx, qy, qz, type, time_remaining (in state), state, id 
+    ```
+
 # Credits
 - **dariowouters** - Massive help and the creator of the original plugin.
 - **ziakhan4505** - Has been developing our side of the plugin with the help of dariowouters.

@@ -44,9 +44,11 @@ namespace ets2_la_plugin
     HANDLE input_h_map_file;
     HANDLE camera_h_map_file;
     HANDLE traffic_h_map_file;
+    HANDLE semaphore_h_map_file;
     const wchar_t* input_mem_name = L"Local\\ETS2LAPluginInput";
     const wchar_t* camera_mem_name = L"Local\\ETS2LACameraProps";
     const wchar_t* traffic_mem_name = L"Local\\ETS2LATraffic";
+    const wchar_t* semaphore_mem_name = L"Local\\ETS2LASemaphore";
 
     // Initialize a shared memory file.
     // format:
@@ -61,22 +63,27 @@ namespace ets2_la_plugin
         log_message << "Opening shared memory file with format " << sformat;
         this->info(log_message.str().c_str());
 
+        const char float_type = 'f';
+        const char boolean_type = 'b';
+        const char integer_type = 'i';
+        const char short_type = 's';
+
         size_t size = 0;
         for (int i = 0; format[i] != '\0'; i++)
         {
-            if (format[i] == 'f')
+            if (format[i] == float_type)
             {
                 size += sizeof(float);
             }
-            else if (format[i] == 'b')
+            else if (format[i] == boolean_type)
             {
                 size += sizeof(bool);
             }
-            else if (format[i] == 'i')
+            else if (format[i] == integer_type)
             {
                 size += sizeof(int);
             }
-            else if (format[i] == 's')
+            else if (format[i] == short_type)
             {
                 size += sizeof(short);
             }
@@ -111,25 +118,25 @@ namespace ets2_la_plugin
         int offset = 0;
         for (int i = 0; format[i] != '\0'; i++)
         {
-            if (format[i] == 'f')
+            if (format[i] == float_type)
             {
                 float f = 0.0f;
                 memcpy(static_cast<char*>(pBuf) + offset, &f, sizeof(float));
                 offset += sizeof(float);
             }
-            else if (format[i] == 'b')
+            else if (format[i] == boolean_type)
             {
                 bool b = false;
                 memcpy(static_cast<char*>(pBuf) + offset, &b, sizeof(bool));
                 offset += sizeof(bool);
             }
-            else if (format[i] == 'i')
+            else if (format[i] == integer_type)
             {
                 int n = 0;
                 memcpy(static_cast<char*>(pBuf) + offset, &n, sizeof(int));
                 offset += sizeof(int);
             }
-            else if (format[i] == 's')
+            else if (format[i] == short_type)
             {
                 short s = 0;
                 memcpy(static_cast<char*>(pBuf) + offset, &s, sizeof(short));
@@ -230,6 +237,39 @@ namespace ets2_la_plugin
                 memcpy(static_cast<char*>(pBuf) + offset + 36, &data.vehicles[i].trailers[j].length, sizeof(float));
                 offset += 40;
             }
+        }
+
+        UnmapViewOfFile(pBuf);
+    }
+
+    void CCore::write_semaphore_mem(const SemaphoreMemData data) const
+    {
+        if (semaphore_h_map_file == NULL)
+        {
+            this->error("Semaphore shared mem file not open.");
+            return;
+        }
+
+        void* pBuf = MapViewOfFile(semaphore_h_map_file, FILE_MAP_ALL_ACCESS, 0, 0, sizeof(SemaphoreMemData));
+        int offset = 0;
+
+        for (int i = 0; i < 20; i++)
+        {
+            memcpy(static_cast<char*>(pBuf) + offset, &data.semaphores[i].x, sizeof(float));
+            memcpy(static_cast<char*>(pBuf) + offset + 4, &data.semaphores[i].y, sizeof(float));
+            memcpy(static_cast<char*>(pBuf) + offset + 8, &data.semaphores[i].z, sizeof(float));
+            memcpy(static_cast<char*>(pBuf) + offset + 12, &data.semaphores[i].cx, sizeof(float));
+            memcpy(static_cast<char*>(pBuf) + offset + 16, &data.semaphores[i].cz, sizeof(float));
+            memcpy(static_cast<char*>(pBuf) + offset + 20, &data.semaphores[i].qw, sizeof(float));
+            memcpy(static_cast<char*>(pBuf) + offset + 24, &data.semaphores[i].qx, sizeof(float));
+            memcpy(static_cast<char*>(pBuf) + offset + 28, &data.semaphores[i].qy, sizeof(float));
+            memcpy(static_cast<char*>(pBuf) + offset + 32, &data.semaphores[i].qz, sizeof(float));
+            memcpy(static_cast<char*>(pBuf) + offset + 36, &data.semaphores[i].type, sizeof(int));
+            memcpy(static_cast<char*>(pBuf) + offset + 40, &data.semaphores[i].time_remaining, sizeof(float));
+            memcpy(static_cast<char*>(pBuf) + offset + 44, &data.semaphores[i].state, sizeof(int));
+            memcpy(static_cast<char*>(pBuf) + offset + 48, &data.semaphores[i].id, sizeof(int));
+
+            offset += 52;
         }
 
         UnmapViewOfFile(pBuf);
@@ -442,14 +482,30 @@ namespace ets2_la_plugin
         this->write_traffic_mem(data);
     }
 
+
     void CCore::get_traffic_objects_data() const
     {
+        
+        struct TrafficObjectData
+        {
+            const prism::traffic_semaphore_actor_t *semaphore_actor;
+            float distance;
+            int id;
+        };
+        
         auto* base_ctrl = prism::base_ctrl_u::get();
 
-        if (base_ctrl == nullptr) return;
+        if (base_ctrl == nullptr)
+            return;
 
-        auto traffic_objects = std::vector<const prism::traffic_object_t*>();
+        const auto truck_pos = this->truck_pos;
+        const auto truck_x = truck_pos.position.x;
+        const auto truck_y = truck_pos.position.y;
+        const auto truck_z = truck_pos.position.z;
 
+        std::vector<TrafficObjectData> traffic_objects_with_distance;
+
+        // Gather traffic lights and gates
         for (const auto *kdop_item : base_ctrl->some_nearby_kdop_items)
         {
             if (kdop_item->item_type != 4) // we only want prefabs
@@ -473,8 +529,21 @@ namespace ets2_la_plugin
                 {
                     continue;
                 }
-                traffic_objects.emplace_back(semaphore_instance.actor);
+                const auto* semaphore_actor = static_cast<const prism::traffic_semaphore_actor_t*>(semaphore_instance.actor);
 
+                // Get distance
+                const float object_x = semaphore_actor->placement.pos.x;
+                const float object_y = semaphore_actor->placement.pos.y;
+                const float object_z = semaphore_actor->placement.pos.z;
+
+                const float dx = object_x - truck_x;
+                const float dy = object_y - truck_y;
+                const float dz = object_z - truck_z;
+                const float distance = std::sqrt(dx * dx + dy * dy + dz * dz);
+
+                const int id = static_cast<int>(semaphore_instance.id);
+
+                traffic_objects_with_distance.push_back({semaphore_actor, distance, id});
             }
         }
 
@@ -488,36 +557,83 @@ namespace ets2_la_plugin
                 {
                     continue; // we only want type 0x07 (traffic_semaphore_actor_t)
                 }
-                traffic_objects.emplace_back(traffic_object);
+               const auto* semaphore_actor = static_cast<const prism::traffic_semaphore_actor_t*>(traffic_object);
+
+                // Get distance
+                const float object_x = semaphore_actor->placement.pos.x;
+                const float object_y = semaphore_actor->placement.pos.y;
+                const float object_z = semaphore_actor->placement.pos.z;
+
+                const float dx = object_x - truck_x;
+                const float dy = object_y - truck_y;
+                const float dz = object_z - truck_z;
+                const float distance = std::sqrt(dx * dx + dy * dy + dz * dz);
+
+                traffic_objects_with_distance.push_back({semaphore_actor, distance, 0});
             }
         }
 
-        for (const auto traffic_object : traffic_objects)
-        {
-            const auto* semaphore_actor = static_cast<const prism::traffic_semaphore_actor_t*>(traffic_object);
+        // Sort semaphores by distance
+        std::sort(traffic_objects_with_distance.begin(), traffic_objects_with_distance.end(), [](const TrafficObjectData& a, const TrafficObjectData& b) {
+            return a.distance < b.distance;
+        });
 
-            // semaphore_actor->placement; // the object's position and rotation
+        std::array<SemaphoreObject, 20> semaphores = {};
+
+        // Process the sorted traffic objects
+        int i = 0;
+        for (const auto& traffic_object_data : traffic_objects_with_distance)
+        {
+            if (i >= 20)
+            {
+                break;
+            }
+
+            const auto* semaphore_actor = traffic_object_data.semaphore_actor;
+            const float distance = traffic_object_data.distance;
+            const int id = traffic_object_data.id;
+
+            SemaphoreObject semaphore_object = {};
+            semaphore_object.x = semaphore_actor->placement.pos.x;
+            semaphore_object.y = semaphore_actor->placement.pos.y;
+            semaphore_object.z = semaphore_actor->placement.pos.z;
+            semaphore_object.cx = semaphore_actor->placement.cx;
+            semaphore_object.cz = semaphore_actor->placement.cz;
+            semaphore_object.qw = semaphore_actor->placement.rot.w;
+            semaphore_object.qx = semaphore_actor->placement.rot.x;
+            semaphore_object.qy = semaphore_actor->placement.rot.y;
+            semaphore_object.qz = semaphore_actor->placement.rot.z;
+            semaphore_object.id = id;
 
             if (semaphore_actor->traffic_rule != nullptr && semaphore_actor->traffic_rule->get_type() == prism::traffic_light_t::ID)
             {
                 const auto* traffic_light = static_cast<const prism::traffic_light_t*>(semaphore_actor->traffic_rule);
 
-                // uint32_t state = traffic_light->state; // 0 = off, 1 = orange_to_red, 2 = red, 4 = orange_to_green, 8 = green, 32 = sleep (blinking orange)
-                // float time_left_until_change = traffic_light->state_time_remaining;
+                semaphore_object.type = 1; // 1 = traffic light
+                semaphore_object.time_remaining = traffic_light->state_time_remaining;
+                // 0 = off, 1 = orange_to_red, 2 = red, 4 = orange_to_green, 8 = green, 32 = sleep (blinking orange)
+                semaphore_object.state = traffic_light->state;
             }
             else // gates
             {
-                // uint8_t state = semaphore_actor->state; // 0 = closing; 1 = closed; 3 = open; 2 = opening
+                // state // 0 = closing; 1 = closed; 3 = open; 2 = opening
+                semaphore_object.type = 2; // 2 = gate
+                semaphore_object.state = semaphore_actor->state;
 
                 if (semaphore_actor->animation_mode == 2)
                 {
-                    // float time_left_until_opened = semaphore_actor->open_time_remaining; // time left until open
-                    // float time_left_until_closed = semaphore_actor->close_time_remaining; // time left until closed
+                    semaphore_object.time_remaining = semaphore_actor->open_time_remaining;
                 } else {
-                    // float time_left_until_end_of_current_state = semaphore_actor->animation_time_elapsed; // time left until end of current state
+                    semaphore_object.time_remaining = semaphore_actor->animation_time_elapsed;
                 }
             }
+
+            semaphores[i] = semaphore_object;
+            i++;
         }
+
+        SemaphoreMemData data = { semaphores };
+        this->write_semaphore_mem(data);
     }
 
     void CCore::get_navigation_data() const
@@ -641,6 +757,45 @@ namespace ets2_la_plugin
         free(total_vehicle_format);
     }
 
+    void CCore::create_semaphore_memory(const wchar_t* semaphore_mem_name, HANDLE& semaphore_h_map_file) const {
+        // NOTE: This function is needlessly long. It could be refactored,
+        // right now it's just a clone of the one above.
+
+        //                           xyz      t s
+        const wchar_t* semaphore = L"fffffffffifii"; // 52 bytes
+        //                              ccwxyz r id
+
+        size_t semaphore_length = wcslen(semaphore);
+        size_t semaphore_object_length = semaphore_length + 1; // +1 for null terminator
+
+        wchar_t* semaphore_object = (wchar_t*)malloc(semaphore_object_length * sizeof(wchar_t));
+        if (!semaphore_object) {
+            this->error("Memory allocation failed for semaphore_object");
+            return;
+        }
+
+        wcscpy(semaphore_object, semaphore); // Copy semaphore
+
+        int semaphore_count = 20;
+        size_t total_len = semaphore_count * semaphore_object_length + 1; // +1 for null terminator
+
+        wchar_t* total_semaphore_format = (wchar_t*)malloc(total_len * sizeof(wchar_t));
+        if (!total_semaphore_format) {
+            this->error("Memory allocation failed for total_semaphore_format");
+            free(semaphore_object);
+            return;
+        }
+
+        total_semaphore_format[0] = L'\0'; // Initialize as an empty string
+        for (int i = 0; i < semaphore_count; i++) {
+            wcscat(total_semaphore_format, semaphore_object);
+        }
+
+        this->initialize_memory_file(const_cast<wchar_t*>(semaphore_mem_name), total_semaphore_format, semaphore_h_map_file);
+        free(semaphore_object);
+        free(total_semaphore_format);
+    }
+
     bool CCore::init()
     {
         MH_Initialize();
@@ -662,6 +817,7 @@ namespace ets2_la_plugin
         this->initialize_memory_file(const_cast<wchar_t*>(input_mem_name), L"fbi", input_h_map_file);
         this->initialize_memory_file(const_cast<wchar_t*>(camera_mem_name), L"ffffssffff", camera_h_map_file);
         this->create_traffic_memory(const_cast<wchar_t*>(traffic_mem_name), traffic_h_map_file);
+        this->create_semaphore_memory(const_cast<wchar_t*>(semaphore_mem_name), semaphore_h_map_file);
 
         if (this->init_params_->register_for_event(SCS_TELEMETRY_EVENT_frame_end, telemetry_tick, nullptr) != SCS_RESULT_ok)
         {
