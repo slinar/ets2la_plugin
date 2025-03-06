@@ -108,16 +108,30 @@ namespace ets2_la_plugin
         std::array<SemaphoreObject, 20> semaphores; // 1040
     };
 
+    struct RouteTaskObject
+    {
+        long long uid;  // 0
+        float distance; // 8
+        float time;     // 12
+                        // 16
+    };
+
+    struct RouteMemData
+    {
+        std::array<RouteTaskObject, 5000> tasks; // 80 000
+    };
+
     class CCore
     {
     private:
         const scs_telemetry_init_params_v101_t *init_params_;
         scs_log_t scs_log_;
 
+        mutable size_t last_route_length_{0};
+
         CHooksManager *hooks_manager_;
 
     public:
-        // just putting this here whatever
         scs_value_dplacement_t truck_pos;
 
         // Virtual memory file
@@ -126,8 +140,10 @@ namespace ets2_la_plugin
         void write_camera_mem(const CameraMemData data) const;
         void create_traffic_memory(const wchar_t* traffic_mem_name, HANDLE& traffic_h_map_file) const;
         void create_semaphore_memory(const wchar_t* semaphore_mem_name, HANDLE& semaphore_h_map_file) const;
+        void create_route_memory(const wchar_t* route_mem_name, HANDLE& route_h_map_file) const;
         void write_traffic_mem(const TrafficMemData data) const;
         void write_semaphore_mem(const SemaphoreMemData data) const;
+        void write_route_mem(const RouteMemData data) const;
 
         static CCore *g_instance;
 

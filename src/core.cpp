@@ -45,10 +45,12 @@ namespace ets2_la_plugin
     HANDLE camera_h_map_file;
     HANDLE traffic_h_map_file;
     HANDLE semaphore_h_map_file;
+    HANDLE route_h_map_file;
     const wchar_t* input_mem_name = L"Local\\ETS2LAPluginInput";
     const wchar_t* camera_mem_name = L"Local\\ETS2LACameraProps";
     const wchar_t* traffic_mem_name = L"Local\\ETS2LATraffic";
     const wchar_t* semaphore_mem_name = L"Local\\ETS2LASemaphore";
+    const wchar_t* route_mem_name = L"Local\\ETS2LARoute";
 
     // Initialize a shared memory file.
     // format:
@@ -56,6 +58,7 @@ namespace ets2_la_plugin
     // b - bool
     // i - int
     // s - short
+    // l - long long
     void CCore::initialize_memory_file(wchar_t* file_name, wchar_t* format, HANDLE& output_h_map_file) const {
         std::wstring wformat(format);
         std::string sformat(wformat.begin(), wformat.end());
@@ -67,6 +70,7 @@ namespace ets2_la_plugin
         const char boolean_type = 'b';
         const char integer_type = 'i';
         const char short_type = 's';
+        const char long_long_type = 'l';
 
         size_t size = 0;
         for (int i = 0; format[i] != '\0'; i++)
@@ -86,6 +90,10 @@ namespace ets2_la_plugin
             else if (format[i] == short_type)
             {
                 size += sizeof(short);
+            }
+            else if (format[i] == long_long_type)
+            {
+                size += sizeof(long long);
             }
         }
 
@@ -141,6 +149,12 @@ namespace ets2_la_plugin
                 short s = 0;
                 memcpy(static_cast<char*>(pBuf) + offset, &s, sizeof(short));
                 offset += sizeof(short);
+            }
+            else if (format[i] == long_long_type)
+            {
+                long long l = 0;
+                memcpy(static_cast<char*>(pBuf) + offset, &l, sizeof(long long));
+                offset += sizeof(long long);
             }
         }
 
@@ -270,6 +284,29 @@ namespace ets2_la_plugin
             memcpy(static_cast<char*>(pBuf) + offset + 48, &data.semaphores[i].id, sizeof(int));
 
             offset += 52;
+        }
+
+        UnmapViewOfFile(pBuf);
+    }
+
+    void CCore::write_route_mem(const RouteMemData data) const
+    {
+        if (route_h_map_file == NULL)
+        {
+            this->error("Route shared mem file not open.");
+            return;
+        }
+
+        void* pBuf = MapViewOfFile(route_h_map_file, FILE_MAP_ALL_ACCESS, 0, 0, sizeof(RouteMemData));
+        int offset = 0;
+
+        for (int i = 0; i < 5000; i++)
+        {
+            memcpy(static_cast<char*>(pBuf) + offset, &data.tasks[i].uid, sizeof(long long));
+            memcpy(static_cast<char*>(pBuf) + offset + 8, &data.tasks[i].distance, sizeof(float));
+            memcpy(static_cast<char*>(pBuf) + offset + 12, &data.tasks[i].time, sizeof(float));
+
+            offset += 16;
         }
 
         UnmapViewOfFile(pBuf);
@@ -648,12 +685,32 @@ namespace ets2_la_plugin
         // route_task is nullptr when no route is set
         if (gps_manager->simple_route_source.route_task != nullptr)
         {
-            // entire gps route node to node
+            size_t n = 0;
             for (const auto &route_item : gps_manager->simple_route_source.route_task->physical_route_items)
             {
-                // float x = route_item.node->coords.x / 256.f;
-                // float y = route_item.node->coords.y / 256.f;
-                // float z = route_item.node->coords.z / 256.f;
+                n++;
+            }
+
+            if (n != last_route_length_)
+            {
+                last_route_length_ = n;
+                std::array<RouteTaskObject, 5000> route_tasks = {};
+                int i = 0;
+                for (const auto &route_item : gps_manager->simple_route_source.route_task->physical_route_items)
+                {
+                    RouteTaskObject task = {};
+                    prism::node_item_t *node = route_item.node;
+                    task.uid = node->uid;
+
+                    task.distance = route_item.total_distance_till_end;
+                    task.time = route_item.total_time_till_end;
+
+                    route_tasks[i] = task;
+                    i++;
+                }
+
+                RouteMemData data = { route_tasks };
+                this->write_route_mem(data);
             }
         }
 
@@ -796,6 +853,45 @@ namespace ets2_la_plugin
         free(total_semaphore_format);
     }
 
+    void CCore::create_route_memory(const wchar_t* route_mem_name, HANDLE& route_h_map_file) const {
+        // NOTE: This function is needlessly long. It could be refactored,
+        // right now it's just a clone of the one above.
+
+        //                       uid
+        const wchar_t* route = L"lff"; // 16 bytes
+        //                        dt
+
+        size_t route_length = wcslen(route);
+        size_t route_object_length = route_length + 1; // +1 for null terminator
+
+        wchar_t* route_object = (wchar_t*)malloc(route_object_length * sizeof(wchar_t));
+        if (!route_object) {
+            this->error("Memory allocation failed for route_object");
+            return;
+        }
+
+        wcscpy(route_object, route); // Copy route
+
+        int route_count = 5000;
+        size_t total_len = route_count * route_object_length + 1; // +1 for null terminator
+
+        wchar_t* total_route_format = (wchar_t*)malloc(total_len * sizeof(wchar_t));
+        if (!total_route_format) {
+            this->error("Memory allocation failed for total_route_format");
+            free(route_object);
+            return;
+        }
+
+        total_route_format[0] = L'\0'; // Initialize as an empty string
+        for (int i = 0; i < route_count; i++) {
+            wcscat(total_route_format, route_object);
+        }
+
+        this->initialize_memory_file(const_cast<wchar_t*>(route_mem_name), total_route_format, route_h_map_file);
+        free(route_object);
+        free(total_route_format);
+    }
+
     bool CCore::init()
     {
         MH_Initialize();
@@ -818,6 +914,7 @@ namespace ets2_la_plugin
         this->initialize_memory_file(const_cast<wchar_t*>(camera_mem_name), L"ffffssffff", camera_h_map_file);
         this->create_traffic_memory(const_cast<wchar_t*>(traffic_mem_name), traffic_h_map_file);
         this->create_semaphore_memory(const_cast<wchar_t*>(semaphore_mem_name), semaphore_h_map_file);
+        this->create_route_memory(const_cast<wchar_t*>(route_mem_name), route_h_map_file);
 
         if (this->init_params_->register_for_event(SCS_TELEMETRY_EVENT_frame_end, telemetry_tick, nullptr) != SCS_RESULT_ok)
         {

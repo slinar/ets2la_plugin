@@ -2,7 +2,7 @@
 Please see the [original repository](https://github.com/dariowouters/ts-extra-utilities) by dariowouters!
 
 # What does this do?
-- [x] Expose a virtual memory file to `Local\ETS2LAPluginInput` to send steering commands directly into the game memory.
+- [x] Expose a virtual memory file to `Local\ETS2LAPluginInput` to **send steering commands** directly into the game memory.
     ```python
     import time, mmap
     buf = mmap.mmap(0, 9, r"Local\ETS2LAPluginInput")
@@ -13,7 +13,7 @@ Please see the [original repository](https://github.com/dariowouters/ts-extra-ut
             math.floor(time.time()) # Current timestamp
         )
     ```
-- [x] Expose a virtual memory file at `Local\ETS2LACameraProps` to get the current camera properties from the game.
+- [x] Expose a virtual memory file at `Local\ETS2LACameraProps` to get the **current camera properties** from the game.
     ```python
     import time, mmap
     buf = mmap.mmap(0, 36, r"Local\ETS2LACameraProps")
@@ -22,7 +22,7 @@ Please see the [original repository](https://github.com/dariowouters/ts-extra-ut
         data = struct.unpack(format, buf[:36])
         data # fov, x, y, z, cx, cz, qw, qx, qy, qz
     ```
-- [x] Expose a virtual memory file at `Local\ETS2LATraffic` to get the closest 20 traffic vehicles.
+- [x] Expose a virtual memory file at `Local\ETS2LATraffic` to get the **closest 20 traffic vehicles**.
     ```python
     import time, mmap
     buf = mmap.mmap(0, 2600, r"Local\ETS2LATraffic")
@@ -39,7 +39,7 @@ Please see the [original repository](https://github.com/dariowouters/ts-extra-ut
         # x, y, z, qw, qx, qy, qz, width, height, length
     ```
 
-- [x] Expose a virtual memory file at `Local\ETS2LASemaphore` to get the closest 20 traffic lights and gates.
+- [x] Expose a virtual memory file at `Local\ETS2LASemaphore` to get the **closest 20 traffic lights and gates**.
     ```python
     import time, mmap
     buf = mmap.mmap(0, 1040, r"Local\ETS2LASemaphore")
@@ -68,7 +68,21 @@ Please see the [original repository](https://github.com/dariowouters/ts-extra-ut
         # gate (index 9 == 2):
         # x, y, z, cx, cz, qw, qx, qy, qz, type, time_remaining (in state), state, id 
     ```
+- [x] Expose a virtual memory file at `Local\ETS2LARoute` to output the **current navigation route**. NOTE: Limited to 5000 items! (mods might go over)
+    ```python
+    import time, mmap
+    buf = mmap.mmap(0, 80_000, r"Local\ETS2LARoute")
+
+    while True:
+        item_format = "qff"
+        total_format = "=" + item_format * 5000
+        data = struct.unpack(total_format, buf[:80_000])
+        data # (item_format) * 20
+        # route item:
+        # node_uid, distance_to_end (m), time_to_end (s)
+    ```
 
 # Credits
 - **dariowouters** - Massive help and the creator of the original plugin.
 - **ziakhan4505** - Has been developing our side of the plugin with the help of dariowouters.
+- **Tumppi066** - Virtual memory implementation.
