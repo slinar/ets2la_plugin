@@ -569,9 +569,9 @@ namespace ets2_la_plugin
                 const auto* semaphore_actor = static_cast<const prism::traffic_semaphore_actor_t*>(semaphore_instance.actor);
 
                 // Get distance
-                const float object_x = semaphore_actor->placement.pos.x;
+                const float object_x = semaphore_actor->placement.pos.x + 512 * semaphore_actor->placement.cx;
                 const float object_y = semaphore_actor->placement.pos.y;
-                const float object_z = semaphore_actor->placement.pos.z;
+                const float object_z = semaphore_actor->placement.pos.z + 512 * semaphore_actor->placement.cz;
 
                 const float dx = object_x - truck_x;
                 const float dy = object_y - truck_y;
@@ -597,9 +597,9 @@ namespace ets2_la_plugin
                const auto* semaphore_actor = static_cast<const prism::traffic_semaphore_actor_t*>(traffic_object);
 
                 // Get distance
-                const float object_x = semaphore_actor->placement.pos.x;
+                const float object_x = semaphore_actor->placement.pos.x + 512 * semaphore_actor->placement.cx;
                 const float object_y = semaphore_actor->placement.pos.y;
-                const float object_z = semaphore_actor->placement.pos.z;
+                const float object_z = semaphore_actor->placement.pos.z + 512 * semaphore_actor->placement.cz;
 
                 const float dx = object_x - truck_x;
                 const float dy = object_y - truck_y;
