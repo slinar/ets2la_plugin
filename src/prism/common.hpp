@@ -76,6 +76,15 @@ namespace ets2_la_plugin
             quat_t rot; //0x0010 (0x10)
         };
         static_assert(sizeof(placement_t) == 0x20);
+
+        class aabox_t // Size: 0x0018 1.54
+        {
+        public:
+            float3_t start; // 0x0000 (0x0c)
+            float3_t end; // 0x000C (0x0c)
+        };
+        static_assert( sizeof( aabox_t ) == 0x18 );
+
     }
 }
 #pragma pack(pop)
