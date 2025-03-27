@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include "prism/common.hpp"
 #include "prism/collections/array_dyn.hpp"
@@ -82,7 +82,7 @@ namespace ets2_la_plugin::prism
         class array_dyn_t< float > wheel_weights; // 0x0468 (0x20)
         class array_dyn_t< float > N00002BB4; // 0x0488 (0x20)
         class array_dyn_t< float > N00002BB8; // 0x04A8 (0x20)
-        float steering; // 0x04C8 (0x04)
+        float steering__dont_use; // 0x04C8 (0x04)
         char pad_04CC[ 4 ]; // 0x04CC (0x04)
         class vehicle_wheel_steering_data_t* wheel_steering_stuff; // 0x04D0 (0x08)
         char pad_04D8[ 8 ]; // 0x04D8 (0x08)
@@ -107,6 +107,8 @@ namespace ets2_la_plugin::prism
         char pad_0CC8[ 8 ]; // 0x0CC8 (0x08)
         class array_dyn_t< physics_shape_t* > N0000553F; // 0x0CD0 (0x20)
         char pad_0CF0[ 120 ]; // 0x0CF0 (0x78)
+
+        bool set_steering_angle( const float new_steering_angle );
     };
     static_assert( sizeof( vehicle_shared_u ) == 0xD68 );
 }

@@ -42,4 +42,10 @@ namespace ets2_la_plugin::patterns
         "48 8d 55 ? " // lea rdx, [rbp + xxh]
         "48 8d 8f ? ? ? ? "// lea rcx, [rdi + xxxxh]
         "ff 90"; // cal qword ptr[rax + 0A0h]
+
+    // f3 0f 10 93 ? ? ? ? f3 0f 5c 93 ? ? ? ? 0f 2f d3
+    inline constexpr auto vehicle_shared_u_steering_offset =
+        "F3 0F 10 93 ? ? ? ? " // movss xmm2, dword ptr [rbx+xxxh] (steering member offset in vehicle_shared)
+        "F3 0F 5C 93 ? ? ? ? " // subss xmm2, dword ptr [rbx+xxxxh]
+        "0F 2F D3"; // comiss  xmm2, xmm3
 }
