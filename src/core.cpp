@@ -333,7 +333,7 @@ namespace ets2_la_plugin
     {
         if (should_override_user_steering_input)
         {
-            self->steering = custom_steering_angle;
+            self->set_steering_angle(custom_steering_angle);
         }
 
         return steering_advance_hook->get_original<prism::game_physics_vehicle_u_steering_advance_fn>()(self);
@@ -522,14 +522,14 @@ namespace ets2_la_plugin
 
     void CCore::get_traffic_objects_data() const
     {
-        
+
         struct TrafficObjectData
         {
             const prism::traffic_semaphore_actor_t *semaphore_actor;
             float distance;
             int id;
         };
-        
+
         auto* base_ctrl = prism::base_ctrl_u::get();
 
         if (base_ctrl == nullptr)
