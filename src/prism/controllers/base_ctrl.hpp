@@ -8,7 +8,7 @@
 
 namespace ets2_la_plugin::prism
 {
-    class base_ctrl_u : public unit_t // Size: 0x2988
+    class base_ctrl_u : public unit_t // Size: 0x2E98 1.54
     {
     public:
         array_dyn_t< class kdop_item_t* > map_kdop_items;                         //0x0010 (0x20)
@@ -55,27 +55,27 @@ namespace ets2_la_plugin::prism
         char pad_06D0[ 40 ];                                                      //0x06D0 (0x28)
         array_dyn_t< token_t > speed_classes;                                     //0x06F8 (0x20)
         uint32_t N000004DA;                                                       //0x0718 (0x04)
-        char pad_071C[ 7116 ];                                                    //0x071C (0x1bcc)
-        class local_gameplay_mode_u* local_gameplay_mode;                         //0x22E8 (0x08)
-        char pad_22F0[ 520 ];                                                     //0x22F0 (0x208)
-        uint64_t selected_physics_engine;                                         //0x24F8 (0x08) 1 = physx
-        class physics_server_physx_t* physics_server;                             //0x2500 (0x08)
-        char pad_2508[ 24 ];                                                      //0x2508 (0x18)
-        class physics_data_u* physics_data;                                       //0x2520 (0x08)
-        class physics_interior_camera_data_u* physics_interior_camera_data;       //0x2528 (0x08)
-        class force_feedback_data_u* force_feedback_data;                         //0x2530 (0x08)
-        class vehicle_damage_data_u* vehicle_damage_data;                         //0x2538 (0x08)
-        class vehicle_service_data_u* vehicle_service_data;                       //0x2540 (0x08)
-        class sector_manager_u* sector_manager;                                   //0x2548 (0x08)
-        char pad_2550[ 360 ];                                                     //0x2550 (0x168)
-        class asset_catalog_u* asset_catalog;                                     //0x26B8 (0x08)
-        char pad_26C0[ 432 ];                                                     //0x26C0 (0x1b0)
-        class game_actor_u* game_actor;                                           //0x2870 (0x08)
-        char pad_2878[ 272 ];                                                     //0x2878 (0x110)
+        char pad_071C[ 8404 ];                                                    //0x071C (0x20d4)
+        class local_gameplay_mode_u* local_gameplay_mode;                         //0x27F0 (0x08)
+        char pad_27F8[ 520 ];                                                     //0x27F8 (0x208)
+        uint64_t selected_physics_engine;                                         //0x2A00 (0x08) 1 = physx
+        class physics_server_physx_t* physics_server;                             //0x2A08 (0x08)
+        char pad_2A10[ 24 ];                                                      //0x2A10 (0x18)
+        class physics_data_u* physics_data;                                       //0x2A28 (0x08)
+        class physics_interior_camera_data_u* physics_interior_camera_data;       //0x2A30 (0x08)
+        class force_feedback_data_u* force_feedback_data;                         //0x2A38 (0x08)
+        class vehicle_damage_data_u* vehicle_damage_data;                         //0x2A40 (0x08)
+        class vehicle_service_data_u* vehicle_service_data;                       //0x2A48 (0x08)
+        class sector_manager_u* sector_manager;                                   //0x2A50 (0x08)
+        char pad_2A58[ 360 ];                                                     //0x2A58 (0x168)
+        class asset_catalog_u* asset_catalog;                                     //0x2BC0 (0x08)
+        char pad_2BC8[ 432 ];                                                     //0x2BC8 (0x1b0)
+        class game_actor_u* game_actor__dont_use;                                 //0x2D78 (0x08)
+        char pad_2D80[ 280 ];                                                     //0x2D80 (0x118)
 
         static base_ctrl_u* get();
     };
 
-    static_assert( sizeof( base_ctrl_u ) == 0x2988 );
+    static_assert( sizeof( base_ctrl_u ) == 0x2E98 );
 }
 #pragma pack( pop )

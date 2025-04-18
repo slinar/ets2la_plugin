@@ -21,7 +21,7 @@ namespace ets2_la_plugin::prism
         uint64_t size;               // 0x0008 (0x08)
         list_dyn_node_t< T >* begin; // 0x0010 (0x08)
         list_dyn_node_t< T >* end;   // 0x0018 (0x08)
-        char pad_0020[ 8 ];          // 0x0020 (0x08)
+        T empty_item;                // 0x0020 (0x08)
         uint64_t capacity;           // 0x0028 (0x08)
         char pad_0030[ 8 ];          // 0x0030 (0x08)
 

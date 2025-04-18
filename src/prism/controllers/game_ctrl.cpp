@@ -36,4 +36,29 @@ namespace ets2_la_plugin::prism
             return nullptr;
         }
     }
+
+    // contains TruckerMP nearby players' trucks and trailers
+    // also contains trucks and trailers in menus (background/service center/truck dealer/etc...)
+    list_dyn_t< class vehicle_shared_u* >* game_ctrl_u::get_some_nearby_non_ai_vehicles_list() const
+    {
+        static uint32_t some_nearby_non_ai_vehicles_offset_in_game_ctrl = 0;
+
+        if ( some_nearby_non_ai_vehicles_offset_in_game_ctrl != 0 )
+        {
+            return reinterpret_cast< list_dyn_t< class vehicle_shared_u* >* >(
+                reinterpret_cast< uint64_t >( this ) + some_nearby_non_ai_vehicles_offset_in_game_ctrl
+            );
+        }
+
+        const auto addr = memory::get_address_for_pattern( patterns::game_ctrl_u_some_nearby_non_ai_vehicles, 8 );
+        if ( addr == 0 )
+        {
+            return nullptr;
+        }
+        some_nearby_non_ai_vehicles_offset_in_game_ctrl = *reinterpret_cast< uint32_t* >( addr );
+
+        return reinterpret_cast< list_dyn_t< class vehicle_shared_u* >* >(
+            reinterpret_cast< uint64_t >( this ) + some_nearby_non_ai_vehicles_offset_in_game_ctrl
+        );
+    }
 }

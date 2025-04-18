@@ -29,6 +29,7 @@
 #include "hooks/function_hook.hpp"
 #include "prism/functions.hpp"
 #include "prism/vehicles/game_physics_vehicle.hpp"
+#include "prism/vehicles/game_trailer_actor.hpp"
 
 #include <ctime>
 #include <cmath>
@@ -519,6 +520,90 @@ namespace ets2_la_plugin
         this->write_traffic_mem(data);
     }
 
+    void CCore::get_truckersmp_traffic_data() const
+    {
+        auto* game_ctrl = prism::game_ctrl_u::get();
+
+        if (game_ctrl == nullptr)
+        {
+            return;
+        }
+
+        static prism::unit_descriptor_t *stored_game_trailer_actor_unit_descriptor = nullptr;
+
+        // doubly linked list of `game_physics_vehicle_u` and `game_trailer_actor_u` (`vehicle_shared_u`)
+        const auto* vehicles_list = game_ctrl->get_some_nearby_non_ai_vehicles_list();
+
+        if (vehicles_list == nullptr)
+        {
+            return;
+        }
+
+        auto* node = vehicles_list->begin;
+        while(node->item != vehicles_list->empty_item)
+        {
+            const auto unit_descriptor = node->item->get_unit_descriptor();
+
+            if (stored_game_trailer_actor_unit_descriptor == nullptr)
+            {
+                // check if the node item is of type 'game_trailer_actor' and store the address of the unit descriptor if it is
+                // that way we can just compare the unit descriptor addresses instead of comparing strings every time
+                if (strcmp(*unit_descriptor->p_class_name, "game_trailer_actor") == 0)
+                {
+                    stored_game_trailer_actor_unit_descriptor = unit_descriptor;
+                }
+            }
+
+            const auto is_trailer = stored_game_trailer_actor_unit_descriptor == unit_descriptor;
+
+            if (is_trailer)
+            {
+                auto *trailer = reinterpret_cast<prism::game_trailer_actor_u *>(node->item);
+
+                while (trailer != nullptr)
+                {
+                    prism::placement_t trailer_placement;
+                    trailer->get_physics_placement(&trailer_placement);
+
+                    const auto trailer_x = trailer_placement.cx * 512 + trailer_placement.pos.x;
+                    const auto trailer_y = trailer_placement.pos.y;
+                    const auto trailer_z = trailer_placement.cz * 512 + trailer_placement.pos.z;
+
+                    const auto trailer_qw = trailer_placement.rot.w;
+                    const auto trailer_qx = trailer_placement.rot.x;
+                    const auto trailer_qy = trailer_placement.rot.y;
+                    const auto trailer_qz = trailer_placement.rot.z;
+
+                    const auto trailer_width = trailer->dimensions.end.x - trailer->dimensions.start.x;
+                    const auto trailer_height = trailer->dimensions.end.y - trailer->dimensions.start.y;
+                    const auto trailer_length = trailer->dimensions.end.z - trailer->dimensions.start.z;
+
+                    trailer = trailer->slave_trailer;
+                }
+            }
+            else
+            {
+                auto *truck = reinterpret_cast<prism::game_physics_vehicle_u *>(node->item);
+                prism::placement_t truck_placement;
+                truck->get_physics_placement(&truck_placement);
+
+                const auto truck_x = truck_placement.cx * 512 + truck_placement.pos.x;
+                const auto truck_y = truck_placement.pos.y;
+                const auto truck_z = truck_placement.cz * 512 + truck_placement.pos.z;
+
+                const auto truck_qw = truck_placement.rot.w;
+                const auto truck_qx = truck_placement.rot.x;
+                const auto truck_qy = truck_placement.rot.y;
+                const auto truck_qz = truck_placement.rot.z;
+
+                const auto truck_width = truck->dimensions.end.x - truck->dimensions.start.x;
+                const auto truck_height = truck->dimensions.end.y - truck->dimensions.start.y;
+                const auto truck_length = truck->dimensions.end.z - truck->dimensions.start.z;
+            }
+
+            node = node->next;
+        }
+    }
 
     void CCore::get_traffic_objects_data() const
     {
@@ -732,6 +817,7 @@ namespace ets2_la_plugin
     {
         this->get_camera_data();
         this->get_ai_traffic_data();
+        this->get_truckersmp_traffic_data();
         this->get_traffic_objects_data();
         this->get_navigation_data();
 

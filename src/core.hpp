@@ -42,7 +42,7 @@ namespace ets2_la_plugin
     struct TrafficVehicle
     {
         float x;               // 0
-        float y;               // 4    
+        float y;               // 4
         float z;               // 8
         float qw;              // 12
         float qx;              // 16
@@ -151,6 +151,8 @@ namespace ets2_la_plugin
         ~CCore();
         void get_camera_data() const;
         void get_ai_traffic_data() const;
+
+        void get_truckersmp_traffic_data() const;
 
         void get_traffic_objects_data() const;
         void get_navigation_data() const;
