@@ -48,4 +48,10 @@ namespace ets2_la_plugin::patterns
         "F3 0F 10 93 ? ? ? ? " // movss xmm2, dword ptr [rbx+xxxh] (steering member offset in vehicle_shared)
         "F3 0F 5C 93 ? ? ? ? " // subss xmm2, dword ptr [rbx+xxxxh]
         "0F 2F D3"; // comiss  xmm2, xmm3
+
+    // f0 0f c1 42 ? 48 8d b9 ? ? ? ? 48 8b 07
+    inline constexpr auto game_ctrl_u_some_nearby_non_ai_vehicles =
+        "F0 0F C1 42 ? " // lock xadd [rdx+xh], eax
+        "48 8D B9 ? ? ? ? " // lea rdi, [rcx+xxxxh] (some_nearby_non_ai_vehicles offset in game_ctrl)
+        "48 8B 07"; // mov rax, [rdi]
 }

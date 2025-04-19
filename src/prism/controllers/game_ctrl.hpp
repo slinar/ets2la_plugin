@@ -12,22 +12,24 @@
 
 namespace ets2_la_plugin::prism
 {
-    class game_ctrl_u : public base_ctrl_u // Size: 0x38D8
+    class game_ctrl_u : public base_ctrl_u // Size: 0x3F88 1.54
     {
     public:
-        char pad_2988[ 8 ];                                //0x2988 (0x08)
-        class radio_u* radio;                              //0x2990 (0x08)
-        class police_ctrl_u* police_ctrl;                  //0x2998 (0x08)
-        char pad_29A0[ 480 ];                              //0x29A0 (0x1e0)
-        list_dyn_t< class light_source_u* > light_sources; //0x2B80 (0x38)
-        char pad_2BB8[ 36 ];                               //0x2BB8 (0x24)
-        int3_t last_ferry_position;                        //0x2BDC (0x0c)
-        char pad_2BE8[ 1848 ];                             //0x2BE8 (0x738)
-        gps_manager_t gps_manager__dont_use;               //0x3320 (0x590)
-        char pad_38B0[ 40 ];                               //0x38B0 (0x28)
+        char pad_2E98[ 8 ];                                                                //0x2E98 (0x08)
+        class radio_u* radio;                                                              //0x2EA0 (0x08)
+        class police_ctrl_u* police_ctrl;                                                  //0x2EA8 (0x08)
+        char pad_2EB0[ 480 ];                                                              //0x2EB0 (0x1e0)
+        class list_dyn_t< class vehicle_shared_u* > some_nearby_non_ai_vehicles__dont_use; //0x3090 (0x38)
+        char pad_30C8[ 36 ];                                                               //0x30C8 (0x24)
+        class int3_t last_ferry_position;                                                  //0x30EC (0x0c)
+        char pad_30F8[ 2264 ];                                                             //0x30F8 (0x8d8)
+        class gps_manager_t gps_manager__dont_use;                                         //0x39D0 (0x590)
+        char pad_3F60[ 40 ];                                                               //0x3F60 (0x28)
 
         static game_ctrl_u* get();
+
+        list_dyn_t< class vehicle_shared_u* >* get_some_nearby_non_ai_vehicles_list() const;
     };
-    static_assert( sizeof( game_ctrl_u ) == 0x38D8 );
+    static_assert( sizeof( game_ctrl_u ) == 0x3F88 );
 }
 #pragma pack( pop )

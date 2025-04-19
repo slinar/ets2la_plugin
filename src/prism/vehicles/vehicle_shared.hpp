@@ -108,6 +108,26 @@ namespace ets2_la_plugin::prism
         class array_dyn_t< physics_shape_t* > N0000553F; // 0x0CD0 (0x20)
         char pad_0CF0[ 120 ]; // 0x0CF0 (0x78)
 
+        virtual void vfunc_10();
+        virtual void vfunc_11();
+        virtual void vfunc_12();
+        virtual void vfunc_13();
+        virtual void vfunc_14();
+        virtual void vfunc_15();
+        virtual void vfunc_16();
+        virtual void vfunc_17();
+        virtual void vfunc_18();
+        virtual void vfunc_19();
+        virtual void vfunc_20();
+        virtual void vfunc_21();
+        virtual void vfunc_22();
+        virtual void vfunc_23();
+        virtual void vfunc_24();
+        virtual void vfunc_25();
+        virtual void vfunc_26();
+        virtual void vfunc_27();
+        virtual void get_physics_placement(placement_t *) const;
+
         bool set_steering_angle( const float new_steering_angle );
     };
     static_assert( sizeof( vehicle_shared_u ) == 0xD68 );
