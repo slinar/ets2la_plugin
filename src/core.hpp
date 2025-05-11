@@ -143,7 +143,7 @@ namespace ets2_la_plugin
         void get_camera_data() const;
         void get_ai_traffic_data() const;
 
-        void get_truckersmp_traffic_data() const;
+        bool get_truckersmp_traffic_data() const;
 
         void get_traffic_objects_data() const;
         void get_navigation_data() const;
