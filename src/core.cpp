@@ -41,278 +41,6 @@
 
 namespace ets2_la_plugin
 {
-    // Plugin input memory implementation
-    HANDLE input_h_map_file;
-    HANDLE camera_h_map_file;
-    HANDLE traffic_h_map_file;
-    HANDLE semaphore_h_map_file;
-    HANDLE route_h_map_file;
-    const wchar_t* input_mem_name = L"Local\\ETS2LAPluginInput";
-    const wchar_t* camera_mem_name = L"Local\\ETS2LACameraProps";
-    const wchar_t* traffic_mem_name = L"Local\\ETS2LATraffic";
-    const wchar_t* semaphore_mem_name = L"Local\\ETS2LASemaphore";
-    const wchar_t* route_mem_name = L"Local\\ETS2LARoute";
-
-    // Initialize a shared memory file.
-    // format:
-    // f - float
-    // b - bool
-    // i - int
-    // s - short
-    // l - long long
-    void CCore::initialize_memory_file(wchar_t* file_name, wchar_t* format, HANDLE& output_h_map_file) const {
-        std::wstring wformat(format);
-        std::string sformat(wformat.begin(), wformat.end());
-        std::stringstream log_message;
-        log_message << "Opening shared memory file with format " << sformat;
-        this->info(log_message.str().c_str());
-
-        const char float_type = 'f';
-        const char boolean_type = 'b';
-        const char integer_type = 'i';
-        const char short_type = 's';
-        const char long_long_type = 'l';
-
-        size_t size = 0;
-        for (int i = 0; format[i] != '\0'; i++)
-        {
-            if (format[i] == float_type)
-            {
-                size += sizeof(float);
-            }
-            else if (format[i] == boolean_type)
-            {
-                size += sizeof(bool);
-            }
-            else if (format[i] == integer_type)
-            {
-                size += sizeof(int);
-            }
-            else if (format[i] == short_type)
-            {
-                size += sizeof(short);
-            }
-            else if (format[i] == long_long_type)
-            {
-                size += sizeof(long long);
-            }
-        }
-
-        output_h_map_file = CreateFileMapping(
-            INVALID_HANDLE_VALUE,    // use paging file
-            NULL,                    // default security
-            PAGE_READWRITE,          // read/write access
-            0,                       // maximum object size (high-order DWORD)
-            size,                    // maximum object size (low-order DWORD)
-            file_name);                // name of mapping object
-
-        if (output_h_map_file == NULL) {
-            DWORD dw = GetLastError();
-            std::stringstream ss;
-            ss << dw;
-            std::string message = "Failed to create file mapping. Error code: " + ss.str();
-            this->error(message.c_str());
-            return;
-        }
-
-        void* pBuf = MapViewOfFile(output_h_map_file, FILE_MAP_ALL_ACCESS, 0, 0, size);
-
-        if (pBuf == NULL) {
-            this->error("Failed to map view of file.");
-            CloseHandle(output_h_map_file);
-            output_h_map_file = NULL;
-            return;
-        }
-
-        int offset = 0;
-        for (int i = 0; format[i] != '\0'; i++)
-        {
-            if (format[i] == float_type)
-            {
-                float f = 0.0f;
-                memcpy(static_cast<char*>(pBuf) + offset, &f, sizeof(float));
-                offset += sizeof(float);
-            }
-            else if (format[i] == boolean_type)
-            {
-                bool b = false;
-                memcpy(static_cast<char*>(pBuf) + offset, &b, sizeof(bool));
-                offset += sizeof(bool);
-            }
-            else if (format[i] == integer_type)
-            {
-                int n = 0;
-                memcpy(static_cast<char*>(pBuf) + offset, &n, sizeof(int));
-                offset += sizeof(int);
-            }
-            else if (format[i] == short_type)
-            {
-                short s = 0;
-                memcpy(static_cast<char*>(pBuf) + offset, &s, sizeof(short));
-                offset += sizeof(short);
-            }
-            else if (format[i] == long_long_type)
-            {
-                long long l = 0;
-                memcpy(static_cast<char*>(pBuf) + offset, &l, sizeof(long long));
-                offset += sizeof(long long);
-            }
-        }
-
-        UnmapViewOfFile(pBuf);
-
-        this->info("Successfully opened shared mem file with size {}", size);
-    }
-
-    // Read the input memory file
-    InputMemData CCore::read_input_mem() const {
-        if (input_h_map_file == NULL) {
-            this->error("Shared mem file not open.");
-            return InputMemData();
-        }
-
-        void* pBuf = MapViewOfFile(input_h_map_file, FILE_MAP_ALL_ACCESS, 0, 0, 9);
-
-        float steering = 0.0f;
-        bool override_steering = false;
-        int timestamp = 0;
-
-        steering = *reinterpret_cast<float*>(static_cast<char*>(pBuf));
-        override_steering = *reinterpret_cast<bool*>(static_cast<char*>(pBuf) + 4);
-        timestamp = *reinterpret_cast<int*>(static_cast<char*>(pBuf) + 5);
-
-        UnmapViewOfFile(pBuf);
-
-        return InputMemData{ steering, override_steering, timestamp };
-    }
-
-    // Output camera data to the shared memory file
-    void CCore::write_camera_mem(const CameraMemData data) const {
-        if (camera_h_map_file == NULL) {
-            this->error("Shared mem file not open.");
-            return;
-        }
-
-        void* pBuf = MapViewOfFile(camera_h_map_file, FILE_MAP_ALL_ACCESS, 0, 0, 36);
-
-        memcpy(static_cast<char*>(pBuf), &data.fov, sizeof(float));
-        memcpy(static_cast<char*>(pBuf) + 4, &data.pos_x, sizeof(float));
-        memcpy(static_cast<char*>(pBuf) + 8, &data.pos_y, sizeof(float));
-        memcpy(static_cast<char*>(pBuf) + 12, &data.pos_z, sizeof(float));
-        memcpy(static_cast<char*>(pBuf) + 16, &data.cx, sizeof(int16_t));
-        memcpy(static_cast<char*>(pBuf) + 18, &data.cz, sizeof(int16_t));
-        memcpy(static_cast<char*>(pBuf) + 20, &data.qw, sizeof(float));
-        memcpy(static_cast<char*>(pBuf) + 24, &data.qx, sizeof(float));
-        memcpy(static_cast<char*>(pBuf) + 28, &data.qy, sizeof(float));
-        memcpy(static_cast<char*>(pBuf) + 32, &data.qz, sizeof(float));
-
-        UnmapViewOfFile(pBuf);
-    }
-
-    void CCore::write_traffic_mem(const TrafficMemData data) const
-    {
-        if (traffic_h_map_file == NULL)
-        {
-            this->error("Traffic shared mem file not open.");
-            return;
-        }
-
-        void* pBuf = MapViewOfFile(traffic_h_map_file, FILE_MAP_ALL_ACCESS, 0, 0, sizeof(TrafficMemData));
-        int offset = 0;
-
-        for (int i = 0; i < 20; i++)
-        {
-            memcpy(static_cast<char*>(pBuf) + offset, &data.vehicles[i].vehicle.x, sizeof(float));
-            memcpy(static_cast<char*>(pBuf) + offset + 4, &data.vehicles[i].vehicle.y, sizeof(float));
-            memcpy(static_cast<char*>(pBuf) + offset + 8, &data.vehicles[i].vehicle.z, sizeof(float));
-            memcpy(static_cast<char*>(pBuf) + offset + 12, &data.vehicles[i].vehicle.qw, sizeof(float));
-            memcpy(static_cast<char*>(pBuf) + offset + 16, &data.vehicles[i].vehicle.qx, sizeof(float));
-            memcpy(static_cast<char*>(pBuf) + offset + 20, &data.vehicles[i].vehicle.qy, sizeof(float));
-            memcpy(static_cast<char*>(pBuf) + offset + 24, &data.vehicles[i].vehicle.qz, sizeof(float));
-            memcpy(static_cast<char*>(pBuf) + offset + 28, &data.vehicles[i].vehicle.width, sizeof(float));
-            memcpy(static_cast<char*>(pBuf) + offset + 32, &data.vehicles[i].vehicle.height, sizeof(float));
-            memcpy(static_cast<char*>(pBuf) + offset + 36, &data.vehicles[i].vehicle.length, sizeof(float));
-            memcpy(static_cast<char*>(pBuf) + offset + 40, &data.vehicles[i].vehicle.speed, sizeof(float));
-            memcpy(static_cast<char*>(pBuf) + offset + 44, &data.vehicles[i].vehicle.acceleration, sizeof(float));
-            memcpy(static_cast<char*>(pBuf) + offset + 48, &data.vehicles[i].vehicle.trailer_count, sizeof(short));
-            memcpy(static_cast<char*>(pBuf) + offset + 50, &data.vehicles[i].vehicle.id, sizeof(short));
-            offset += 52;
-
-            for (int j = 0; j < 2; j++) // Trailers
-            {
-                memcpy(static_cast<char*>(pBuf) + offset, &data.vehicles[i].trailers[j].x, sizeof(float));
-                memcpy(static_cast<char*>(pBuf) + offset + 4, &data.vehicles[i].trailers[j].y, sizeof(float));
-                memcpy(static_cast<char*>(pBuf) + offset + 8, &data.vehicles[i].trailers[j].z, sizeof(float));
-                memcpy(static_cast<char*>(pBuf) + offset + 12, &data.vehicles[i].trailers[j].qw, sizeof(float));
-                memcpy(static_cast<char*>(pBuf) + offset + 16, &data.vehicles[i].trailers[j].qx, sizeof(float));
-                memcpy(static_cast<char*>(pBuf) + offset + 20, &data.vehicles[i].trailers[j].qy, sizeof(float));
-                memcpy(static_cast<char*>(pBuf) + offset + 24, &data.vehicles[i].trailers[j].qz, sizeof(float));
-                memcpy(static_cast<char*>(pBuf) + offset + 28, &data.vehicles[i].trailers[j].width, sizeof(float));
-                memcpy(static_cast<char*>(pBuf) + offset + 32, &data.vehicles[i].trailers[j].height, sizeof(float));
-                memcpy(static_cast<char*>(pBuf) + offset + 36, &data.vehicles[i].trailers[j].length, sizeof(float));
-                offset += 40;
-            }
-        }
-
-        UnmapViewOfFile(pBuf);
-    }
-
-    void CCore::write_semaphore_mem(const SemaphoreMemData data) const
-    {
-        if (semaphore_h_map_file == NULL)
-        {
-            this->error("Semaphore shared mem file not open.");
-            return;
-        }
-
-        void* pBuf = MapViewOfFile(semaphore_h_map_file, FILE_MAP_ALL_ACCESS, 0, 0, sizeof(SemaphoreMemData));
-        int offset = 0;
-
-        for (int i = 0; i < 20; i++)
-        {
-            memcpy(static_cast<char*>(pBuf) + offset, &data.semaphores[i].x, sizeof(float));
-            memcpy(static_cast<char*>(pBuf) + offset + 4, &data.semaphores[i].y, sizeof(float));
-            memcpy(static_cast<char*>(pBuf) + offset + 8, &data.semaphores[i].z, sizeof(float));
-            memcpy(static_cast<char*>(pBuf) + offset + 12, &data.semaphores[i].cx, sizeof(float));
-            memcpy(static_cast<char*>(pBuf) + offset + 16, &data.semaphores[i].cz, sizeof(float));
-            memcpy(static_cast<char*>(pBuf) + offset + 20, &data.semaphores[i].qw, sizeof(float));
-            memcpy(static_cast<char*>(pBuf) + offset + 24, &data.semaphores[i].qx, sizeof(float));
-            memcpy(static_cast<char*>(pBuf) + offset + 28, &data.semaphores[i].qy, sizeof(float));
-            memcpy(static_cast<char*>(pBuf) + offset + 32, &data.semaphores[i].qz, sizeof(float));
-            memcpy(static_cast<char*>(pBuf) + offset + 36, &data.semaphores[i].type, sizeof(int));
-            memcpy(static_cast<char*>(pBuf) + offset + 40, &data.semaphores[i].time_remaining, sizeof(float));
-            memcpy(static_cast<char*>(pBuf) + offset + 44, &data.semaphores[i].state, sizeof(int));
-            memcpy(static_cast<char*>(pBuf) + offset + 48, &data.semaphores[i].id, sizeof(int));
-
-            offset += 52;
-        }
-
-        UnmapViewOfFile(pBuf);
-    }
-
-    void CCore::write_route_mem(const RouteMemData data) const
-    {
-        if (route_h_map_file == NULL)
-        {
-            this->error("Route shared mem file not open.");
-            return;
-        }
-
-        void* pBuf = MapViewOfFile(route_h_map_file, FILE_MAP_ALL_ACCESS, 0, 0, sizeof(RouteMemData));
-        int offset = 0;
-
-        for (int i = 0; i < 5000; i++)
-        {
-            memcpy(static_cast<char*>(pBuf) + offset, &data.tasks[i].uid, sizeof(long long));
-            memcpy(static_cast<char*>(pBuf) + offset + 8, &data.tasks[i].distance, sizeof(float));
-            memcpy(static_cast<char*>(pBuf) + offset + 12, &data.tasks[i].time, sizeof(float));
-
-            offset += 16;
-        }
-
-        UnmapViewOfFile(pBuf);
-    }
-
     CCore *CCore::g_instance = nullptr;
     std::shared_ptr<CFunctionHook> steering_advance_hook = nullptr;
 
@@ -344,6 +72,7 @@ namespace ets2_la_plugin
     {
         this->hooks_manager_ = new CHooksManager();
         scs_log_ = init_params->common.log;
+        memory_manager_ = new CMemoryHandler(scs_log_);
         g_instance = this;
     }
 
@@ -380,16 +109,9 @@ namespace ets2_la_plugin
             data.qy = current_camera->placement.rot.y;
             data.qz = current_camera->placement.rot.z;
 
-            this->write_camera_mem(data);
-        }
-        // or loop all cameras to get data from all of them
-        for (const auto *camera : camera_manager->cameras)
-        {
-            // ...
+            this->memory_manager_->write_camera_mem(data);
         }
     }
-
-    #include <map> // Include map instead of unordered_map
 
     void CCore::get_ai_traffic_data() const
     {
@@ -398,7 +120,8 @@ namespace ets2_la_plugin
         if (game_traffic == nullptr)
             return;
 
-        const auto truck_pos = this->truck_pos; // our truck position from the SDK telemetry
+        // our truck position from the SDK telemetry
+        const auto truck_pos = this->truck_pos;
         const auto truck_x = truck_pos.position.x;
         const auto truck_y = truck_pos.position.y;
         const auto truck_z = truck_pos.position.z;
@@ -444,12 +167,12 @@ namespace ets2_la_plugin
             return a.distance < b.distance;
         });
 
-        std::array<TrafficVehicleObject, 20> vehicles = {};
+        std::array<TrafficVehicleObject, 40> vehicles = {};
 
         i = 0;
         for (const auto& vehicle_data : sorted_ai_vehicles)
         {
-            if (i >= 20)
+            if (i >= 40)
             {
                 break;
             }
@@ -517,7 +240,7 @@ namespace ets2_la_plugin
         }
 
         TrafficMemData data = { vehicles };
-        this->write_traffic_mem(data);
+        this->memory_manager_->write_traffic_mem(data);
     }
 
     void CCore::get_truckersmp_traffic_data() const
@@ -700,13 +423,13 @@ namespace ets2_la_plugin
             return a.distance < b.distance;
         });
 
-        std::array<SemaphoreObject, 20> semaphores = {};
+        std::array<SemaphoreObject, 40> semaphores = {};
 
         // Process the sorted traffic objects
         int i = 0;
         for (const auto& traffic_object_data : traffic_objects_with_distance)
         {
-            if (i >= 20)
+            if (i >= 40)
             {
                 break;
             }
@@ -755,7 +478,7 @@ namespace ets2_la_plugin
         }
 
         SemaphoreMemData data = { semaphores };
-        this->write_semaphore_mem(data);
+        this->memory_manager_->write_semaphore_mem(data);
     }
 
     void CCore::get_navigation_data() const
@@ -779,7 +502,7 @@ namespace ets2_la_plugin
             if (n != last_route_length_)
             {
                 last_route_length_ = n;
-                std::array<RouteTaskObject, 5000> route_tasks = {};
+                std::array<RouteTaskObject, 6000> route_tasks = {};
                 int i = 0;
                 for (const auto &route_item : gps_manager->simple_route_source.route_task->physical_route_items)
                 {
@@ -795,7 +518,7 @@ namespace ets2_la_plugin
                 }
 
                 RouteMemData data = { route_tasks };
-                this->write_route_mem(data);
+                this->memory_manager_->write_route_mem(data);
             }
         }
 
@@ -815,6 +538,7 @@ namespace ets2_la_plugin
 
     void CCore::tick() const
     {
+        int start_time = std::time(0);
         this->get_camera_data();
         this->get_ai_traffic_data();
         this->get_truckersmp_traffic_data();
@@ -822,7 +546,7 @@ namespace ets2_la_plugin
         this->get_navigation_data();
 
         // Get steering data from the shared memory file
-        InputMemData data = this->read_input_mem();
+        InputMemData data = this->memory_manager_->read_input_mem();
 
         should_override_user_steering_input = data.override_steering;
         custom_steering_angle = data.steering;
@@ -856,128 +580,6 @@ namespace ets2_la_plugin
         return true;
     }
 
-    void CCore::create_traffic_memory(const wchar_t* traffic_mem_name, HANDLE& traffic_h_map_file) const {
-        //                   xyz    whl  tc
-        wchar_t* vehicle = L"ffffffffffffss"; // 52 bytes
-        //                      wxyz  sa  id
-
-        //                   xyz    whl
-        wchar_t* trailer = L"ffffffffff";    // 40 bytes
-        //                      wxyz
-
-        // Concatenate vehicle + trailer + trailer
-        size_t vehicle_len = wcslen(vehicle);
-        size_t trailer_len = wcslen(trailer);
-        size_t vehicle_object_len = vehicle_len + 2 * trailer_len + 1; // +1 for null terminator
-
-        wchar_t* vehicle_object = (wchar_t*)malloc(vehicle_object_len * sizeof(wchar_t));
-        if (!vehicle_object) {
-            this->error("Memory allocation failed for vehicle_object");
-            return;
-        }
-
-        wcscpy(vehicle_object, vehicle); // Copy vehicle
-        wcscat(vehicle_object, trailer); // Append trailer
-        wcscat(vehicle_object, trailer); // Append trailer again
-
-        int vehicle_count = 20;
-        size_t total_len = vehicle_count * vehicle_object_len + 1; // +1 for null terminator
-
-        wchar_t* total_vehicle_format = (wchar_t*)malloc(total_len * sizeof(wchar_t));
-        if (!total_vehicle_format) {
-            this->error("Memory allocation failed for total_vehicle_format");
-            free(vehicle_object);
-            return;
-        }
-
-        total_vehicle_format[0] = L'\0'; // Initialize as an empty string
-        for (int i = 0; i < vehicle_count; i++) {
-            wcscat(total_vehicle_format, vehicle_object);
-        }
-
-        this->initialize_memory_file(const_cast<wchar_t*>(traffic_mem_name), total_vehicle_format, traffic_h_map_file);
-        free(vehicle_object);
-        free(total_vehicle_format);
-    }
-
-    void CCore::create_semaphore_memory(const wchar_t* semaphore_mem_name, HANDLE& semaphore_h_map_file) const {
-        // NOTE: This function is needlessly long. It could be refactored,
-        // right now it's just a clone of the one above.
-
-        //                           xyz      t s
-        const wchar_t* semaphore = L"fffffffffifii"; // 52 bytes
-        //                              ccwxyz r id
-
-        size_t semaphore_length = wcslen(semaphore);
-        size_t semaphore_object_length = semaphore_length + 1; // +1 for null terminator
-
-        wchar_t* semaphore_object = (wchar_t*)malloc(semaphore_object_length * sizeof(wchar_t));
-        if (!semaphore_object) {
-            this->error("Memory allocation failed for semaphore_object");
-            return;
-        }
-
-        wcscpy(semaphore_object, semaphore); // Copy semaphore
-
-        int semaphore_count = 20;
-        size_t total_len = semaphore_count * semaphore_object_length + 1; // +1 for null terminator
-
-        wchar_t* total_semaphore_format = (wchar_t*)malloc(total_len * sizeof(wchar_t));
-        if (!total_semaphore_format) {
-            this->error("Memory allocation failed for total_semaphore_format");
-            free(semaphore_object);
-            return;
-        }
-
-        total_semaphore_format[0] = L'\0'; // Initialize as an empty string
-        for (int i = 0; i < semaphore_count; i++) {
-            wcscat(total_semaphore_format, semaphore_object);
-        }
-
-        this->initialize_memory_file(const_cast<wchar_t*>(semaphore_mem_name), total_semaphore_format, semaphore_h_map_file);
-        free(semaphore_object);
-        free(total_semaphore_format);
-    }
-
-    void CCore::create_route_memory(const wchar_t* route_mem_name, HANDLE& route_h_map_file) const {
-        // NOTE: This function is needlessly long. It could be refactored,
-        // right now it's just a clone of the one above.
-
-        //                       uid
-        const wchar_t* route = L"lff"; // 16 bytes
-        //                        dt
-
-        size_t route_length = wcslen(route);
-        size_t route_object_length = route_length + 1; // +1 for null terminator
-
-        wchar_t* route_object = (wchar_t*)malloc(route_object_length * sizeof(wchar_t));
-        if (!route_object) {
-            this->error("Memory allocation failed for route_object");
-            return;
-        }
-
-        wcscpy(route_object, route); // Copy route
-
-        int route_count = 5000;
-        size_t total_len = route_count * route_object_length + 1; // +1 for null terminator
-
-        wchar_t* total_route_format = (wchar_t*)malloc(total_len * sizeof(wchar_t));
-        if (!total_route_format) {
-            this->error("Memory allocation failed for total_route_format");
-            free(route_object);
-            return;
-        }
-
-        total_route_format[0] = L'\0'; // Initialize as an empty string
-        for (int i = 0; i < route_count; i++) {
-            wcscat(total_route_format, route_object);
-        }
-
-        this->initialize_memory_file(const_cast<wchar_t*>(route_mem_name), total_route_format, route_h_map_file);
-        free(route_object);
-        free(total_route_format);
-    }
-
     bool CCore::init()
     {
         MH_Initialize();
@@ -995,12 +597,8 @@ namespace ets2_la_plugin
             return false;
         }
 
-        // ETS2LA specific memory files
-        this->initialize_memory_file(const_cast<wchar_t*>(input_mem_name), L"fbi", input_h_map_file);
-        this->initialize_memory_file(const_cast<wchar_t*>(camera_mem_name), L"ffffssffff", camera_h_map_file);
-        this->create_traffic_memory(const_cast<wchar_t*>(traffic_mem_name), traffic_h_map_file);
-        this->create_semaphore_memory(const_cast<wchar_t*>(semaphore_mem_name), semaphore_h_map_file);
-        this->create_route_memory(const_cast<wchar_t*>(route_mem_name), route_h_map_file);
+        // Initialize memory manager
+        this->memory_manager_->init();
 
         if (this->init_params_->register_for_event(SCS_TELEMETRY_EVENT_frame_end, telemetry_tick, nullptr) != SCS_RESULT_ok)
         {
@@ -1019,6 +617,7 @@ namespace ets2_la_plugin
 
     void CCore::destroy()
     {
+        delete this->memory_manager_;
         delete this->hooks_manager_;
     }
 }

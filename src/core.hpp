@@ -6,6 +6,7 @@
 #include "array"
 
 #include "managers/hooks_manager.hpp"
+#include "memory/virtual/memory_handler.hpp"
 
 namespace ets2_la_plugin
 {
@@ -54,8 +55,8 @@ namespace ets2_la_plugin
         float speed;           // 40
         float acceleration;    // 44
         short trailer_count;   // 48
-        short id;              // 52
-                               // 56
+        short id;              // 50
+                               // 52
     };
 
     struct TrafficTrailer
@@ -76,13 +77,13 @@ namespace ets2_la_plugin
     struct TrafficVehicleObject
     {
         TrafficVehicle vehicle;      // 0
-        TrafficTrailer trailers[2];  // 56
-                                     // 136
+        TrafficTrailer trailers[2];  // 52
+                                     // 132
     };
 
     struct TrafficMemData
     {
-        std::array<TrafficVehicleObject, 20> vehicles; // 2720
+        std::array<TrafficVehicleObject, 40> vehicles; // 5280
     };
 
     struct SemaphoreObject
@@ -105,7 +106,7 @@ namespace ets2_la_plugin
 
     struct SemaphoreMemData
     {
-        std::array<SemaphoreObject, 20> semaphores; // 1040
+        std::array<SemaphoreObject, 40> semaphores; // 2080
     };
 
     struct RouteTaskObject
@@ -118,7 +119,7 @@ namespace ets2_la_plugin
 
     struct RouteMemData
     {
-        std::array<RouteTaskObject, 5000> tasks; // 80 000
+        std::array<RouteTaskObject, 6000> tasks; // 96 000
     };
 
     class CCore
@@ -130,20 +131,10 @@ namespace ets2_la_plugin
         mutable size_t last_route_length_{0};
 
         CHooksManager *hooks_manager_;
+        CMemoryHandler *memory_manager_;
 
     public:
         scs_value_dplacement_t truck_pos;
-
-        // Virtual memory file
-        void initialize_memory_file(wchar_t* file_name, wchar_t* format, HANDLE& output_h_map_file) const;
-        InputMemData read_input_mem() const;
-        void write_camera_mem(const CameraMemData data) const;
-        void create_traffic_memory(const wchar_t* traffic_mem_name, HANDLE& traffic_h_map_file) const;
-        void create_semaphore_memory(const wchar_t* semaphore_mem_name, HANDLE& semaphore_h_map_file) const;
-        void create_route_memory(const wchar_t* route_mem_name, HANDLE& route_h_map_file) const;
-        void write_traffic_mem(const TrafficMemData data) const;
-        void write_semaphore_mem(const SemaphoreMemData data) const;
-        void write_route_mem(const RouteMemData data) const;
 
         static CCore *g_instance;
 
@@ -165,6 +156,7 @@ namespace ets2_la_plugin
         bool init_truck_steering_manipulation() const;
 
         CHooksManager *get_hooks_manager() const { return this->hooks_manager_; }
+        CMemoryHandler *get_memory_manager() const { return this->memory_manager_; }
 
         // TODO: change to file only or something
         template <class... T>

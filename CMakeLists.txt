@@ -5,9 +5,16 @@ set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
 file(GLOB_RECURSE ${CMAKE_PROJECT_NAME}-src src/*.hpp src/*.cpp)
 
+# I don't use CMAKE, if there's a better way to do this then change it
+# - Tumppi066
+list(APPEND ${CMAKE_PROJECT_NAME}-src 
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/memory/virtual/memory_handler.cpp"
+)
+
 set(PLUGIN_VERSION_MAJOR 1)
 set(PLUGIN_VERSION_MINOR 0)
 set(PLUGIN_VERSION_PATCH 0)
+
 
 configure_file(
     ${CMAKE_CURRENT_SOURCE_DIR}/version.hpp.in

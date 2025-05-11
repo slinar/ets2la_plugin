@@ -22,27 +22,27 @@ Please see the [original repository](https://github.com/dariowouters/ts-extra-ut
         data = struct.unpack(format, buf[:36])
         data # fov, x, y, z, cx, cz, qw, qx, qy, qz
     ```
-- [x] Expose a virtual memory file at `Local\ETS2LATraffic` to get the **closest 20 traffic vehicles**.
+- [x] Expose a virtual memory file at `Local\ETS2LATraffic` to get the **closest 40 traffic vehicles**.
     ```python
     import time, mmap
-    buf = mmap.mmap(0, 2600, r"Local\ETS2LATraffic")
+    buf = mmap.mmap(0, 5280, r"Local\ETS2LATraffic")
     while True:
         vehicle_format = "ffffffffffffh"
         trailer_format = "ffffffffff"
         vehicle_object_format = vehicle_format + trailer_format + trailer_format
-        total_format = "=" + vehicle_object_format * 20
-        data = struct.unpack(total_format, buf[:2600])
-        data # (vehicle + trailer + trailer) * 20
+        total_format = "=" + vehicle_object_format * 40
+        data = struct.unpack(total_format, buf[:5280])
+        data # (vehicle + trailer + trailer) * 40
         # vehicle:
         # x, y, z, qw, qx, qy, qz, width, height, length, speed, acceleration, trailer_count
         # trailer:
         # x, y, z, qw, qx, qy, qz, width, height, length
     ```
 
-- [x] Expose a virtual memory file at `Local\ETS2LASemaphore` to get the **closest 20 traffic lights and gates**.
+- [x] Expose a virtual memory file at `Local\ETS2LASemaphore` to get the **closest 40 traffic lights and gates**.
     ```python
     import time, mmap
-    buf = mmap.mmap(0, 1040, r"Local\ETS2LASemaphore")
+    buf = mmap.mmap(0, 2080, r"Local\ETS2LASemaphore")
 
     # Traffic light states
     OFF = 0
@@ -60,23 +60,23 @@ Please see the [original repository](https://github.com/dariowouters/ts-extra-ut
 
     while True:
         semaphore_format = "fffffffffifii"
-        total_format = "=" + semaphore_format * 20
-        data = struct.unpack(total_format, buf[:1040])
-        data # (semaphore_format) * 20
+        total_format = "=" + semaphore_format * 40
+        data = struct.unpack(total_format, buf[:2080])
+        data # (semaphore_format) * 40
         # traffic_light (index 9 == 1):
         # x, y, z, cx, cz, qw, qx, qy, qz, type, time_remaining (in state), state, id
         # gate (index 9 == 2):
         # x, y, z, cx, cz, qw, qx, qy, qz, type, time_remaining (in state), state, id 
     ```
-- [x] Expose a virtual memory file at `Local\ETS2LARoute` to output the **current navigation route**. NOTE: Limited to 5000 items! (mods might go over)
+- [x] Expose a virtual memory file at `Local\ETS2LARoute` to output the **current navigation route**. NOTE: Limited to 6000 items! (mods might go over)
     ```python
     import time, mmap
     buf = mmap.mmap(0, 80_000, r"Local\ETS2LARoute")
 
     while True:
         item_format = "qff"
-        total_format = "=" + item_format * 5000
-        data = struct.unpack(total_format, buf[:80_000])
+        total_format = "=" + item_format * 6000
+        data = struct.unpack(total_format, buf[:96_000])
         data # (item_format) * 20
         # route item:
         # node_uid, distance_to_end (m), time_to_end (s)
