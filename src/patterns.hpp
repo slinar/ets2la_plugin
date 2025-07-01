@@ -2,12 +2,13 @@
 
 namespace ets2_la_plugin::patterns
 {
-    // 48 8b 05 ? ? ? ? 48 8b 4b ? 48 8b 80 ? ? ? ? 48 8b b9
+    // 48 8b 05 ? ? ? ? 48 8b ? 48 8b 49 ? 48 8b 80
     inline constexpr auto base_ctrl =
         "48 8b 05 ? ? ? ? " // mov rax, cs:xxx (base_ctrl offset)
-        "48 8b 4b ? "       // mov rcx, [rbx+xxh]
-        "48 8b 80 ? ? ? ? " // mov rax, [rax+xxxxh] (game_actor offset)
-        "48 8b b9";         // mov rdi, [rcx+...
+        "48 8b ? "          // mov rdi, rcx
+        "48 8b 49 ? "       // mov rcx, [rcx+xx]
+        "48 8b 80";         // mov rax, [rax+xxxxh] (game_actor offset)
+
 
     // 48 8b 05 ? ? ? ? 8b 58 ? 75 ? 3b 9f ? ? ? ? 74
     inline constexpr auto camera_manager =
