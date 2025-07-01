@@ -15,9 +15,11 @@ namespace ets2_la_plugin::prism
         virtual void destructor();
         virtual void destroy();
         virtual void clone();
-        virtual unit_descriptor_t* get_unit_descriptor();
+        virtual void vfunc_3();
         virtual void vfunc_4();
-        virtual void vfunc_5();
+        virtual unit_descriptor_t* get_unit_descriptor();
+        virtual void vfunc_6();
+        virtual void vfunc_7();
         virtual void pre_save();
         virtual void post_save();
         virtual void pre_load();
