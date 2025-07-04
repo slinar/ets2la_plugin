@@ -26,6 +26,10 @@ namespace ets2_la_plugin::prism
         class gps_manager_t gps_manager__dont_use;                                         //0x39D0 (0x590)
         char pad_3F60[ 40 ];                                                               //0x3F60 (0x28)
 
+        static uint32_t some_nearby_non_ai_vehicles_offset;
+        static uint32_t gps_manager_offset;
+
+        static bool scan_patterns();
         static game_ctrl_u* get();
 
         list_dyn_t< class vehicle_shared_u* >* get_some_nearby_non_ai_vehicles_list() const;

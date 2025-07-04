@@ -708,11 +708,53 @@ namespace ets2_la_plugin
     {
         if ( prism::base_ctrl_u::scan_patterns() )
         {
-            CCore::g_instance->debug( "Found base_ctrl @ +{:x}", memory::as_offset( prism::base_ctrl_u::instance_ptr_address ) );
+            CCore::g_instance->debug(
+                "Found base_ctrl @ +{:x}", memory::as_offset( prism::base_ctrl_u::instance_ptr_address )
+            );
         }
         else
         {
             this->error( "Could not find base_ctrl patterns" );
+            return false;
+        }
+
+        try
+        {
+            prism::game_ctrl_u::scan_patterns();
+        }
+        catch( std::exception& e )
+        {
+            this->error("Error when scanning game_ctrl memory patterns: {}", e.what());
+            return false;
+        }
+
+        if ( prism::camera_manager_u::scan_patterns() )
+        {
+            CCore::g_instance->debug(
+                "Found camera_manager @ +{:x}", memory::as_offset( prism::camera_manager_u::instance_ptr_address )
+            );
+        }
+        else
+        {
+            this->error( "Could not find camera_manager patterns" );
+            return false;
+        }
+
+        if ( prism::game_traffic_u::scan_patterns() )
+        {
+            CCore::g_instance->debug(
+                "Found game_traffic @ +{:x}", memory::as_offset( prism::game_traffic_u::instance_ptr_address )
+            );
+        }
+        else
+        {
+            this->error( "Could not find game_traffic patterns" );
+            return false;
+        }
+
+        if ( !prism::vehicle_shared_u::scan_patterns() )
+        {
+            this->error( "Could not find vehicle_shared patterns" );
             return false;
         }
 
