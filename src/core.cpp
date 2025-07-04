@@ -30,6 +30,7 @@
 #include "prism/functions.hpp"
 #include "prism/vehicles/game_physics_vehicle.hpp"
 #include "prism/vehicles/game_trailer_actor.hpp"
+#include "prism/game_actor.hpp"
 
 #include <ctime>
 #include <cmath>
@@ -45,8 +46,10 @@ namespace ets2_la_plugin
     std::shared_ptr<CFunctionHook> steering_advance_hook = nullptr;
 
     // set these 2 from remote connection
-    bool should_override_user_steering_input = false;
+    bool should_override_user_input = false;
     float custom_steering_angle = 0.0f;
+    float custom_throttle_input = 0.0f;
+    float custom_brake_input = 0.0f;
 
     SCSAPI_VOID telemetry_tick(const scs_event_t event, const void *const event_info, scs_context_t context)
     {
@@ -60,9 +63,16 @@ namespace ets2_la_plugin
      */
     uint64_t hk_steering_advance(prism::game_physics_vehicle_u *self)
     {
-        if (should_override_user_steering_input)
+        if (should_override_user_input)
         {
             self->set_steering_angle(custom_steering_angle);
+
+            auto* game_actor = prism::game_actor_u::get();
+            if (game_actor != nullptr)
+            {
+                game_actor->set_throttle_input(custom_throttle_input);
+                game_actor->set_brake_input(custom_brake_input);
+            }
         }
 
         return steering_advance_hook->get_original<prism::game_physics_vehicle_u_steering_advance_fn>()(self);
@@ -657,17 +667,19 @@ namespace ets2_la_plugin
         this->get_traffic_objects_data();
         this->get_navigation_data();
 
-        // Get steering data from the shared memory file
+        // Get input data from the shared memory file
         InputMemData data = this->memory_manager_->read_input_mem();
 
-        should_override_user_steering_input = data.override_steering;
+        should_override_user_input = data.override_input;
         custom_steering_angle = data.steering;
+        custom_throttle_input = data.throttle;
+        custom_brake_input = data.brake;
 
         int timestamp = data.timestamp;
         int current_time = std::time(0);
         if (current_time - timestamp > 1) // Data is over a second old
         {
-            should_override_user_steering_input = false;
+            should_override_user_input = false;
         }
     }
 
@@ -692,10 +704,41 @@ namespace ets2_la_plugin
         return true;
     }
 
+    bool CCore::scan_for_required_patterns()
+    {
+        if ( prism::base_ctrl_u::scan_patterns() )
+        {
+            CCore::g_instance->debug( "Found base_ctrl @ +{:x}", memory::as_offset( prism::base_ctrl_u::instance_ptr_address ) );
+        }
+        else
+        {
+            this->error( "Could not find base_ctrl patterns" );
+            return false;
+        }
+
+        try
+        {
+            prism::game_actor_u::scan_patterns();
+        }
+        catch( std::exception& e )
+        {
+            this->error("Error when scanning game_actor memory patterns: {}", e.what());
+            return false;
+        }
+
+        return true;
+    }
+
     bool CCore::init()
     {
         MH_Initialize();
         this->info("Initializing {}", VERSION);
+
+        if ( !this->scan_for_required_patterns() )
+        {
+            this->error( "Could not find required memory patterns" );
+            return false;
+        }
 
         if (this->init_params_->register_for_channel(
                 SCS_TELEMETRY_TRUCK_CHANNEL_world_placement,

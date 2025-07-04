@@ -4,25 +4,32 @@
 #include "memory/memory_utils.hpp"
 #include "patterns.hpp"
 
-#include "core.hpp"
-
 namespace ets2_la_plugin::prism
 {
-    base_ctrl_u* base_ctrl_u::get()
+
+    uint64_t base_ctrl_u::instance_ptr_address = 0;
+    uint32_t base_ctrl_u::game_actor_offset    = 0;
+
+    bool base_ctrl_u::scan_patterns()
     {
-        static uint64_t base_ctrl_instance_ptr_address = 0;
-
-        if ( base_ctrl_instance_ptr_address != 0 )
-            return *reinterpret_cast< base_ctrl_u** >( base_ctrl_instance_ptr_address );
-
-        const auto addr = memory::get_address_for_pattern( patterns::base_ctrl, 3 );
+        const auto addr = memory::get_address_for_pattern( patterns::base_ctrl );
 
         if ( addr == 0 )
-            return nullptr;
-        base_ctrl_instance_ptr_address = addr + *reinterpret_cast< int32_t* >( addr ) + 4;
+        {
+            return false;
+        }
+        base_ctrl_u::instance_ptr_address = addr + 3 + *reinterpret_cast< int32_t* >( addr + 3 ) + 4;
+        base_ctrl_u::game_actor_offset    = *reinterpret_cast< uint32_t* >( addr + 17 );
 
-        CCore::g_instance->debug( "Found base_ctrl @ +{:x}", memory::as_offset( base_ctrl_instance_ptr_address ) );
+        return true;
+    }
 
-        return *reinterpret_cast< base_ctrl_u** >( base_ctrl_instance_ptr_address );
+    base_ctrl_u* base_ctrl_u::get()
+    {
+        if ( base_ctrl_u::instance_ptr_address != 0 )
+        {
+            return *reinterpret_cast< base_ctrl_u** >( base_ctrl_u::instance_ptr_address );
+        }
+        return nullptr;
     }
 }

@@ -20,7 +20,7 @@ namespace ets2_la_plugin
 
     bool CMemoryHandler::init()
     {
-        this->initialize_memory_file(const_cast<wchar_t*>(input_mem_name), L"fbi", input_h_map_file);
+        this->initialize_memory_file(const_cast<wchar_t*>(input_mem_name), L"fffbi", input_h_map_file);
         this->initialize_memory_file(const_cast<wchar_t*>(camera_mem_name), L"ffffssffff", camera_h_map_file);
         this->create_traffic_memory();
         this->create_semaphore_memory();
@@ -176,19 +176,23 @@ namespace ets2_la_plugin
             return InputMemData();
         }
 
-        void* pBuf = MapViewOfFile(input_h_map_file, FILE_MAP_ALL_ACCESS, 0, 0, 9);
+        void* pBuf = MapViewOfFile(input_h_map_file, FILE_MAP_ALL_ACCESS, 0, 0, 17);
 
         float steering = 0.0f;
-        bool override_steering = false;
+        float throttle = 0.0f;
+        float brake = 0.0f;
+        bool override_input = false;
         int timestamp = 0;
 
         steering = *reinterpret_cast<float*>(static_cast<char*>(pBuf));
-        override_steering = *reinterpret_cast<bool*>(static_cast<char*>(pBuf) + 4);
-        timestamp = *reinterpret_cast<int*>(static_cast<char*>(pBuf) + 5);
+        throttle = *reinterpret_cast<float*>(static_cast<char*>(pBuf) + 0x04);
+        brake = *reinterpret_cast<float*>(static_cast<char*>(pBuf) + 0x08);
+        override_input = *reinterpret_cast<bool*>(static_cast<char*>(pBuf) + 0x0C);
+        timestamp = *reinterpret_cast<int*>(static_cast<char*>(pBuf) + 0x0D);
 
         UnmapViewOfFile(pBuf);
 
-        return InputMemData{ steering, override_steering, timestamp };
+        return InputMemData{ steering, throttle, brake, override_input, timestamp };
     }
 
     // Output camera data to the shared memory file

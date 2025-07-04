@@ -73,6 +73,10 @@ namespace ets2_la_plugin::prism
         class game_actor_u* game_actor__dont_use;                                 //0x2D78 (0x08)
         char pad_2D80[ 280 ];                                                     //0x2D80 (0x118)
 
+        static uint64_t instance_ptr_address;
+        static uint32_t game_actor_offset;
+
+        static bool scan_patterns();
         static base_ctrl_u* get();
     };
 

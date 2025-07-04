@@ -49,6 +49,21 @@ namespace ets2_la_plugin::patterns
         "F3 0F 5C 93 ? ? ? ? " // subss xmm2, dword ptr [rbx+xxxxh]
         "0F 2F D3"; // comiss  xmm2, xmm3
 
+    // 48 b8 3F 7C FD CC 88 01 00 00 4c 89 ? ? ? ? ? 0f 57 c0 48 89 ? ? ? ? ? 48 8d 8f
+    inline constexpr auto game_actor_throttle_input_offset =
+        "48 b8 3F 7C FD CC 88 01 00 00 " //mov rax, 188CCFD7C3Fh
+        "4C 89 ? ? ? ? ? " // mov ...
+        "0F 57 C0 " // xorps xmm0, xmm0
+        "48 89 ? ? ? ? ? " // mov ...
+        "48 8D 8F"; // lea rcx, [rdi+xxxxh] (throttle input offset in game_actor_u)
+
+    // 48 b8 C7 91 B7 6C 4E 3A 00 00 4c 89 ? ? ? ? ? 48 89 ? ? ? ? ? 0f 11 87
+    inline constexpr auto game_actor_brake_input_offset =
+        "48 b8 C7 91 B7 6C 4E 3A 00 00 " //mov rax, 3A4E6CB791C7h
+        "4C 89 ? ? ? ? ? " // mov ...
+        "48 89 ? ? ? ? ? " // mov ...
+        "0f 11 87"; // movups xmmword ptr [rdi+xxxxh], xmm0 (brake input offset in game_actor_u)
+
     // f0 0f c1 42 ? 48 8d b9 ? ? ? ? 48 8b 07
     inline constexpr auto game_ctrl_u_some_nearby_non_ai_vehicles =
         "F0 0F C1 42 ? " // lock xadd [rdx+xh], eax
