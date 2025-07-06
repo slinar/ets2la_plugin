@@ -787,6 +787,19 @@ namespace ets2_la_plugin
     {
         MH_Initialize();
         this->info("Initializing {}", VERSION);
+        this->info("Expected game version: {}", GAME_VERSION);
+
+        // parse GAME_VERSION from for example "1.55.x" to "1.55." (removing the "x" everywhere)
+        auto game_version_parsed = fmt::to_string(GAME_VERSION);
+        game_version_parsed.erase(std::remove(game_version_parsed.begin(), game_version_parsed.end(), 'x'), game_version_parsed.end());
+
+        // search for the parsed game version in the game name which is for example: "Euro Truck Simulator 2 1.55.1.0s"
+        if (fmt::to_string(this->init_params_->common.game_name).find(game_version_parsed) == std::string::npos) {
+            this->error("Detected unsupported game version: {}", fmt::to_string(this->init_params_->common.game_name));
+            return false; // game version not supported, dont load plugin
+        } else {
+            this->info("Detected matching game version: {}", fmt::to_string(this->init_params_->common.game_name));
+        }
 
         if ( !this->scan_for_required_patterns() )
         {
