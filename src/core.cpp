@@ -45,8 +45,9 @@ namespace ets2_la_plugin
     CCore *CCore::g_instance = nullptr;
     std::shared_ptr<CFunctionHook> steering_advance_hook = nullptr;
 
-    // set these 2 from remote connection
-    bool should_override_user_input = false;
+    bool should_override_steering = false;
+    bool should_override_throttle = false;
+    bool should_override_brake = false;
     float custom_steering_angle = 0.0f;
     float custom_throttle_input = 0.0f;
     float custom_brake_input = 0.0f;
@@ -63,14 +64,21 @@ namespace ets2_la_plugin
      */
     uint64_t hk_steering_advance(prism::game_physics_vehicle_u *self)
     {
-        if (should_override_user_input)
+        if (should_override_steering)
         {
             self->set_steering_angle(custom_steering_angle);
+        }
 
-            auto* game_actor = prism::game_actor_u::get();
-            if (game_actor != nullptr)
+        auto* game_actor = prism::game_actor_u::get();
+        if (game_actor != nullptr)
+        {
+            if (should_override_throttle) 
             {
                 game_actor->set_throttle_input(custom_throttle_input);
+            }
+
+            if (should_override_brake)
+            {
                 game_actor->set_brake_input(custom_brake_input);
             }
         }
@@ -670,7 +678,9 @@ namespace ets2_la_plugin
         // Get input data from the shared memory file
         InputMemData data = this->memory_manager_->read_input_mem();
 
-        should_override_user_input = data.override_input;
+        should_override_steering = data.override_steering;
+        should_override_brake = data.override_brake;
+        should_override_throttle = data.override_throttle;
         custom_steering_angle = data.steering;
         custom_throttle_input = data.throttle;
         custom_brake_input = data.brake;
@@ -679,7 +689,9 @@ namespace ets2_la_plugin
         int current_time = std::time(0);
         if (current_time - timestamp > 1) // Data is over a second old
         {
-            should_override_user_input = false;
+            should_override_steering = false;
+            should_override_brake = false;
+            should_override_throttle = false;
         }
     }
 

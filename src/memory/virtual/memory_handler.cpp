@@ -20,7 +20,7 @@ namespace ets2_la_plugin
 
     bool CMemoryHandler::init()
     {
-        this->initialize_memory_file(const_cast<wchar_t*>(input_mem_name), L"fffbi", input_h_map_file);
+        this->initialize_memory_file(const_cast<wchar_t*>(input_mem_name), L"fbfbfbi", input_h_map_file);
         this->initialize_memory_file(const_cast<wchar_t*>(camera_mem_name), L"ffffssffff", camera_h_map_file);
         this->create_traffic_memory();
         this->create_semaphore_memory();
@@ -179,20 +179,24 @@ namespace ets2_la_plugin
         void* pBuf = MapViewOfFile(input_h_map_file, FILE_MAP_ALL_ACCESS, 0, 0, 17);
 
         float steering = 0.0f;
+        bool override_steering = false;
         float throttle = 0.0f;
+        bool override_throttle = false;
         float brake = 0.0f;
-        bool override_input = false;
+        bool override_brake = false;
         int timestamp = 0;
 
         steering = *reinterpret_cast<float*>(static_cast<char*>(pBuf));
-        throttle = *reinterpret_cast<float*>(static_cast<char*>(pBuf) + 0x04);
-        brake = *reinterpret_cast<float*>(static_cast<char*>(pBuf) + 0x08);
-        override_input = *reinterpret_cast<bool*>(static_cast<char*>(pBuf) + 0x0C);
-        timestamp = *reinterpret_cast<int*>(static_cast<char*>(pBuf) + 0x0D);
+        override_steering = *reinterpret_cast<bool*>(static_cast<char*>(pBuf) + 0x04);
+        throttle = *reinterpret_cast<float*>(static_cast<char*>(pBuf) + 0x05);
+        override_throttle = *reinterpret_cast<bool*>(static_cast<char*>(pBuf) + 0x09);
+        brake = *reinterpret_cast<float*>(static_cast<char*>(pBuf) + 0x0A);
+        override_brake = *reinterpret_cast<bool*>(static_cast<char*>(pBuf) + 0x0E);
+        timestamp = *reinterpret_cast<int*>(static_cast<char*>(pBuf) + 0x0F);
 
         UnmapViewOfFile(pBuf);
 
-        return InputMemData{ steering, throttle, brake, override_input, timestamp };
+        return InputMemData{ steering, override_steering, throttle, override_throttle, brake, override_brake, timestamp };
     }
 
     // Output camera data to the shared memory file

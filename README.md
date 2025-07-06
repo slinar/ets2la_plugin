@@ -5,14 +5,16 @@ Please see the [original repository](https://github.com/dariowouters/ts-extra-ut
 - [x] Expose a virtual memory file to `Local\ETS2LAPluginInput` to **send input commands** directly into the game memory.
     ```python
     import time, mmap
-    buf = mmap.mmap(0, 17, r"Local\ETS2LAPluginInput")
+    buf = mmap.mmap(0, 19, r"Local\ETS2LAPluginInput")
     while True:
-        buf[:] = struct.pack('=fff?l',
-            0.00, # Steering value
-            0.00, # throttle value
-            0.00, # brake value
-            True, # Should override input?
-            math.floor(time.time()) # Current timestamp
+        buf[:] = struct.pack('=f?f?f?l',
+            0.00, # Steering value'
+            True, # Override Steering
+            0.00, # Throttle value
+            True, # Override Throttle
+            0.00, # Brake value
+            True, # Override Brake
+            math.floor(time.time()) # Current timestamp (data over 1s old will be ignored)
         )
     ```
 - [x] Expose a virtual memory file at `Local\ETS2LACameraProps` to get the **current camera properties** from the game.

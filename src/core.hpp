@@ -20,11 +20,14 @@ namespace ets2_la_plugin
 
     struct InputMemData
     {
-        float steering;
-        float throttle;
-        float brake;
-        bool override_input;
-        int timestamp;
+        float steering;          // 0
+        bool override_steering;  // 4
+        float throttle;          // 5
+        bool override_throttle;  // 9
+        float brake;             // 10
+        bool override_brake;     // 14
+        int timestamp;           // 15
+                                 // 19
     };
 
     struct CameraMemData
