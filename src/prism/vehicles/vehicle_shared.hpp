@@ -128,6 +128,9 @@ namespace ets2_la_plugin::prism
         virtual void vfunc_27();
         virtual void get_physics_placement(placement_t *) const;
 
+        static uint32_t steering_angle_offset;
+
+        static bool scan_patterns();
         bool set_steering_angle( const float new_steering_angle );
     };
     static_assert( sizeof( vehicle_shared_u ) == 0xD68 );

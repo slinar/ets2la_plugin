@@ -11,6 +11,9 @@ namespace ets2_la_plugin::prism
     public:
         char pad_05D8[ 32 ]; //0x05D8 (0x20)
 
+        static uint64_t instance_ptr_address;
+
+        static bool scan_patterns();
         static game_traffic_u* get();
     };
     static_assert( sizeof( game_traffic_u ) == 0x5F8 );

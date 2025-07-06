@@ -20,13 +20,13 @@ BEGIN
     BEGIN
         BLOCK "200004b0"
         BEGIN
-            VALUE "CompanyName", "Dario Wouters"
-            VALUE "FileDescription", "A plugin for ATS/ETS2 to add some experimental extra functionality."
+            VALUE "CompanyName", "ETS2LA"
+            VALUE "FileDescription", "ETS2LA SDK plugin."
             VALUE "FileVersion", PLUGIN_VERSION_STR
-            VALUE "InternalName", "ts-extra-utilities"
+            VALUE "InternalName", "ets2_la_plugin"
             VALUE "LegalCopyright", "Copyright (C) 2024"
-            VALUE "OriginalFilename", "ts-extra-utilities.dll"
-            VALUE "ProductName", "ts-extra-utilities"
+            VALUE "OriginalFilename", "ets2_la_plugin.dll"
+            VALUE "ProductName", "ets2_la_plugin"
             VALUE "ProductVersion", PLUGIN_VERSION_STR
         END
     END

@@ -21,7 +21,9 @@ namespace ets2_la_plugin
     struct InputMemData
     {
         float steering;
-        bool override_steering;
+        float throttle;
+        float brake;
+        bool override_input;
         int timestamp;
     };
 
@@ -132,6 +134,8 @@ namespace ets2_la_plugin
 
         CHooksManager *hooks_manager_;
         CMemoryHandler *memory_manager_;
+
+        bool scan_for_required_patterns();
 
     public:
         scs_value_dplacement_t truck_pos;
