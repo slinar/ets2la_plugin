@@ -61,7 +61,9 @@ namespace ets2_la_plugin
         float acceleration;    // 44
         short trailer_count;   // 48
         short id;              // 50
-                               // 52
+        bool is_tmp;           // 52
+        bool is_trailer;       // 53
+                               // 54    
     };
 
     struct TrafficTrailer
@@ -82,13 +84,13 @@ namespace ets2_la_plugin
     struct TrafficVehicleObject
     {
         TrafficVehicle vehicle;      // 0
-        TrafficTrailer trailers[2];  // 52
-                                     // 132
+        TrafficTrailer trailers[2];  // 54
+                                     // 134
     };
 
     struct TrafficMemData
     {
-        std::array<TrafficVehicleObject, 40> vehicles; // 5280
+        std::array<TrafficVehicleObject, 40> vehicles; // 5360
     };
 
     struct SemaphoreObject

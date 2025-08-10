@@ -29,16 +29,16 @@ Please see the [original repository](https://github.com/dariowouters/ts-extra-ut
 - [x] Expose a virtual memory file at `Local\ETS2LATraffic` to get the **closest 40 traffic vehicles**.
     ```python
     import time, mmap
-    buf = mmap.mmap(0, 5280, r"Local\ETS2LATraffic")
+    buf = mmap.mmap(0, 5360, r"Local\ETS2LATraffic")
     while True:
-        vehicle_format = "ffffffffffffh"
+        vehicle_format = "ffffffffffffh??"
         trailer_format = "ffffffffff"
         vehicle_object_format = vehicle_format + trailer_format + trailer_format
         total_format = "=" + vehicle_object_format * 40
-        data = struct.unpack(total_format, buf[:5280])
+        data = struct.unpack(total_format, buf[:5360])
         data # (vehicle + trailer + trailer) * 40
         # vehicle:
-        # x, y, z, qw, qx, qy, qz, width, height, length, speed, acceleration, trailer_count
+        # x, y, z, qw, qx, qy, qz, width, height, length, speed, acceleration, trailer_count, is_tmp, is_trailer
         # trailer:
         # x, y, z, qw, qx, qy, qz, width, height, length
     ```

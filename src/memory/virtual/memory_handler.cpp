@@ -249,7 +249,9 @@ namespace ets2_la_plugin
             memcpy(static_cast<char*>(pBuf) + offset + 44, &data.vehicles[i].vehicle.acceleration, sizeof(float));
             memcpy(static_cast<char*>(pBuf) + offset + 48, &data.vehicles[i].vehicle.trailer_count, sizeof(short));
             memcpy(static_cast<char*>(pBuf) + offset + 50, &data.vehicles[i].vehicle.id, sizeof(short));
-            offset += 52;
+            memcpy(static_cast<char*>(pBuf) + offset + 52, &data.vehicles[i].vehicle.is_tmp, sizeof(bool));
+            memcpy(static_cast<char*>(pBuf) + offset + 53, &data.vehicles[i].vehicle.is_trailer, sizeof(bool));
+            offset += 54;
 
             for (int j = 0; j < 2; j++) // Trailers
             {
@@ -327,8 +329,8 @@ namespace ets2_la_plugin
     }
 
     void CMemoryHandler::create_traffic_memory() const {
-        //                   xyz    whl  tc
-        wchar_t* vehicle = L"ffffffffffffss"; // 52 bytes
+        //                   xyz    whl  tc is_tmp is_trailer
+        wchar_t* vehicle = L"ffffffffffffbb??"; // 54 bytes
         //                      wxyz  sa  id
 
         //                   xyz    whl
