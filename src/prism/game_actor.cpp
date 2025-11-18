@@ -21,7 +21,7 @@ namespace ets2_la_plugin::prism
         }
         game_actor_u::throttle_input_offset = *reinterpret_cast< uint32_t* >( throttle_addr );
 
-        const auto brake_addr = memory::get_address_for_pattern( patterns::game_actor_brake_input_offset, 27 );
+        const auto brake_addr = memory::get_address_for_pattern( patterns::game_actor_brake_input_offset, 30 );
 
         if ( brake_addr == 0 )
         {

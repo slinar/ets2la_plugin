@@ -35,7 +35,7 @@ namespace ets2_la_plugin::prism
         array_dyn_t< class kdop_item_t* > kdop_items_unk;                     // 0x0460 (0x20)
         array_dyn_t< class kdop_item_t* > kdop_items_unk2;                    // 0x0480 (0x20)
         char pad_04A0[ 32 ];                                                  // 0x04A0 (0x20)
-        array_dyn_t< class kdop_item_t* > some_nearby_kdop_items;             // 0x04C0 (0x20) I think
+        array_dyn_t< class kdop_item_t* > some_nearby_kdop_items__dont_use;   // 0x04C0 (0x20) I think
         char pad_04E0[ 512 ];                                                 // 0x04E0 (0x200)
         array_dyn_t< token_t > N000004AC;                                     // 0x06E0 (0x20)
         array_dyn_t< token_t > N000004B0;                                     // 0x0700 (0x20)
@@ -73,9 +73,12 @@ namespace ets2_la_plugin::prism
 
         static uint64_t instance_ptr_address;
         static uint32_t game_actor_offset;
+        static uint32_t some_nearby_kdop_items_offset;
 
         static bool scan_patterns();
         static base_ctrl_u* get();
+
+        array_dyn_t< class kdop_item_t* >* get_nearby_kdop_items() const;
     };
 
     static_assert( sizeof( base_ctrl_u ) == 0x2F98 );

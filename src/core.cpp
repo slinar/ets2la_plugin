@@ -473,8 +473,15 @@ namespace ets2_la_plugin
 
         std::vector<TrafficObjectData> traffic_objects_with_distance;
 
+        auto* nearby_kdop_items = base_ctrl->get_nearby_kdop_items();
+
+        if ( nearby_kdop_items == nullptr )
+        {
+            return;
+        }
+
         // Gather traffic lights and gates
-        for (const auto *kdop_item : base_ctrl->some_nearby_kdop_items)
+        for (const auto *kdop_item : *nearby_kdop_items )
         {
             if (kdop_item->item_type != 4) // we only want prefabs
             {
@@ -717,15 +724,16 @@ namespace ets2_la_plugin
 
     bool CCore::scan_for_required_patterns()
     {
-        if ( prism::base_ctrl_u::scan_patterns() )
+        try
         {
+            prism::base_ctrl_u::scan_patterns();
             CCore::g_instance->debug(
                 "Found base_ctrl @ +{:x}", memory::as_offset( prism::base_ctrl_u::instance_ptr_address )
             );
         }
-        else
+        catch( std::exception& e )
         {
-            this->error( "Could not find base_ctrl patterns" );
+            this->error("Error when scanning base_ctrl memory patterns: {}", e.what());
             return false;
         }
 
