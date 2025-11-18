@@ -58,16 +58,26 @@ namespace ets2_la_plugin::patterns
         "48 89 ? ? ? ? ? " // mov ...
         "48 8D 8F"; // lea rcx, [rdi+xxxxh] (throttle input offset in game_actor_u)
 
-    // 48 b8 C7 91 B7 6C 4E 3A 00 00 4c 89 ? ? ? ? ? 48 89 ? ? ? ? ? 0f 11 87
+    // 48 b8 C7 91 B7 6C 4E 3A 00 00 4c 89 ? ? ? ? ? 0f 57 c0 48 89 ? ? ? ? ? 48 8d 8f
     inline constexpr auto game_actor_brake_input_offset =
         "48 b8 C7 91 B7 6C 4E 3A 00 00 " //mov rax, 3A4E6CB791C7h
         "4C 89 ? ? ? ? ? " // mov ...
+        "0F 57 C0 " // xorps xmm0, xmm0
         "48 89 ? ? ? ? ? " // mov ...
-        "0f 11 87"; // movups xmmword ptr [rdi+xxxxh], xmm0 (brake input offset in game_actor_u)
+        "48 8D 8F"; // lea rcx, [rdi+xxxxh] (brake input offset in game_actor_u)
 
     // f0 0f c1 42 ? 48 8d b9 ? ? ? ? 48 8b 07
     inline constexpr auto game_ctrl_u_some_nearby_non_ai_vehicles =
         "F0 0F C1 42 ? " // lock xadd [rdx+xh], eax
         "48 8D B9 ? ? ? ? " // lea rdi, [rcx+xxxxh] (some_nearby_non_ai_vehicles offset in game_ctrl)
         "48 8B 07"; // mov rax, [rdi]
+
+    // 49 8d 8e ? ? ? ? 48 89 45 ? e8 ? ? ? ? 49 8b 86
+    inline constexpr auto base_ctrl_u_some_nearby_kdop_items =
+        "49 8d 8e ? ? ? ? " // lea rcx, [r14+xxxh] (some_nearby_kdop_items offset in base_ctrl)
+        "48 89 45 ? " // mov ...
+        "e8 ? ? ? ? " // call ...
+        "49 8b 86"; // mov ...
+
+
 }
