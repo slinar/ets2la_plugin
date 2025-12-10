@@ -79,5 +79,12 @@ namespace ets2_la_plugin::patterns
         "e8 ? ? ? ? " // call ...
         "49 8b 86"; // mov ...
 
+    // 48 8b 86 ? ? ? ? 48 85 c0 74 ? 48 8b fe 48 8b f0
+    inline constexpr auto game_trailer_actor_u_slave_trailer_offset =
+        "48 8b 86 ? ? ? ? " // mov rax, [rsi+xxxxh] (slave_trailer_offset offset in game_trailer_actor_u)
+        "48 85 C0 " // test rax, rax
+        "74 0B " // jz xxx
+        "48 8B FE " // mov rdi, rsi
+        "48 8B F0"; // mov rsi, rax
 
 }

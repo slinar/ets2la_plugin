@@ -324,7 +324,7 @@ namespace ets2_la_plugin
     
             if (is_trailer)
             {
-                auto *trailer = static_cast<const prism::game_trailer_actor_u *>(node->item);
+                auto *trailer = static_cast<prism::game_trailer_actor_u *>(node->item);
 
                 while (trailer != nullptr)
                 {
@@ -356,7 +356,7 @@ namespace ets2_la_plugin
                     sorted_mp_vehicles.push_back(vehicle_data);
 
                     // Move to the next trailer in the chain
-                    trailer = trailer->slave_trailer;
+                    trailer = trailer->get_slave_trailer();
                 }
             }
             else
@@ -784,6 +784,12 @@ namespace ets2_la_plugin
         catch( std::exception& e )
         {
             this->error("Error when scanning game_actor memory patterns: {}", e.what());
+            return false;
+        }
+
+        if ( !prism::game_trailer_actor_u::scan_patterns() )
+        {
+            this->error( "Could not find game_trailer_actor patterns" );
             return false;
         }
 
