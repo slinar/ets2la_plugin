@@ -11,7 +11,7 @@ namespace ets2_la_plugin::prism
         class physics_joint_physx_t* physics_joint; // 0x0D70 (0x08) nullptr when trailer not attached
         char pad_0D78[ 128 ]; // 0x0D78 (0x80)
         class vehicle_shared_u* parent_vehicle; // 0x0DF8 (0x08) truck for 1st trailer
-        class game_trailer_actor_u* slave_trailer; // 0x0E00 (0x08)
+        class game_trailer_actor_u* slave_trailer__dont_use; // 0x0E00 (0x08)
         class accessory_trailer_data_u* accessory_trailer_data; // 0x0E08 (0x08)
         class vehicle_accessory_u* transmission_accessory; // 0x0E10 (0x08)
         class vehicle_accessory_u* engine_accessory; // 0x0E18 (0x08)
@@ -51,6 +51,11 @@ namespace ets2_la_plugin::prism
         class history_stream_set_u* history_stream; // 0x0FE0 (0x08)
         char pad_0FE8[ 16 ]; // 0x0FE8 (0x10)
         class sound_player_trailer_t* sound_player; // 0x0FF8 (0x08)
+
+        static uint32_t slave_trailer_offset;
+
+        static bool scan_patterns();
+        game_trailer_actor_u* get_slave_trailer();
     };
     static_assert( sizeof( game_trailer_actor_u ) == 0x1000 );
 }
