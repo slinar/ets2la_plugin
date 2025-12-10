@@ -223,7 +223,6 @@ namespace ets2_la_plugin
             vehicle.id = vehicle_data.id; // Persistent unique ID
 
             const auto* trailer = ai_vehicle.vehicle->trailer;
-
             while (trailer != nullptr)
             {
                 if (trailer->physics_data == nullptr)
@@ -231,7 +230,7 @@ namespace ets2_la_plugin
                     break;
                 }
 
-                if (vehicle.trailer_count >= 2)
+                if (vehicle.trailer_count >= 3)
                 {
                     break;
                 }
@@ -267,7 +266,15 @@ namespace ets2_la_plugin
     bool CCore::get_truckersmp_traffic_data() const
     {
         auto* game_ctrl = prism::game_ctrl_u::get();
-    
+
+        struct mp_vehicle_sort {
+            const prism::game_physics_vehicle_u* truck;
+            prism::game_trailer_actor_u* trailers[3];
+            int trailer_count;
+            float distance;
+            int id;
+        };
+
         if (game_ctrl == nullptr)
         {
             return false;
@@ -278,17 +285,8 @@ namespace ets2_la_plugin
         const auto truck_y = truck_pos.position.y;
         const auto truck_z = truck_pos.position.z;
         
-        struct mp_vehicle_sort {
-            float x, y, z;
-            float qw, qx, qy, qz;
-            float width, height, length;
-            float distance;
-            int id;
-            bool is_trailer;
-        };
-    
+        std::vector<mp_vehicle_sort> sorted;
         static prism::unit_descriptor_t *stored_game_trailer_actor_unit_descriptor = nullptr;
-        std::vector<mp_vehicle_sort> sorted_mp_vehicles;
         
         // Static map for unique IDs
         static std::map<const void*, int> mp_vehicle_uids;
@@ -304,7 +302,6 @@ namespace ets2_la_plugin
         while(node->item != vehicles_list->empty_item)
         {
             const auto unit_descriptor = node->item->get_unit_descriptor();
-    
             if (stored_game_trailer_actor_unit_descriptor == nullptr)
             {
                 // check if the node item is of type 'game_trailer_actor' and store the address of the unit descriptor if it is
@@ -315,7 +312,6 @@ namespace ets2_la_plugin
             }
     
             const auto is_trailer = stored_game_trailer_actor_unit_descriptor == unit_descriptor;
-            
             // Unique ID if not already assigned
             if (mp_vehicle_uids.find(node->item) == mp_vehicle_uids.end()) {
                 mp_vehicle_uids[node->item] = next_mp_vehicle_id++;
@@ -324,82 +320,59 @@ namespace ets2_la_plugin
     
             if (is_trailer)
             {
-                auto *trailer = static_cast<prism::game_trailer_actor_u *>(node->item);
+                auto* trailer = static_cast<prism::game_trailer_actor_u *>(node->item);
+
+                // All data goes as like this:
+                // Vehicle -> Trailer -> Trailer -> Vehicle
+                // Get the latest parent vehicle
+                mp_vehicle_sort& sort_object = sorted.back();
 
                 while (trailer != nullptr)
                 {
-                    mp_vehicle_sort vehicle_data = {};
-                    vehicle_data.is_trailer = true;
-                    vehicle_data.id = id;
-
-                    prism::placement_t trailer_placement;
-                    trailer->get_physics_placement(&trailer_placement);
-        
-                    vehicle_data.x = trailer_placement.cx * 512 + trailer_placement.pos.x;
-                    vehicle_data.y = trailer_placement.pos.y;
-                    vehicle_data.z = trailer_placement.cz * 512 + trailer_placement.pos.z;
-        
-                    vehicle_data.qw = trailer_placement.rot.w;
-                    vehicle_data.qx = trailer_placement.rot.x;
-                    vehicle_data.qy = trailer_placement.rot.y;
-                    vehicle_data.qz = trailer_placement.rot.z;
-        
-                    vehicle_data.width = trailer->dimensions.end.x - trailer->dimensions.start.x;
-                    vehicle_data.height = trailer->dimensions.end.y - trailer->dimensions.start.y;
-                    vehicle_data.length = trailer->dimensions.end.z - trailer->dimensions.start.z;
-                    
-                    const float dx = vehicle_data.x - truck_x;
-                    const float dy = vehicle_data.y - truck_y;
-                    const float dz = vehicle_data.z - truck_z;
-                    vehicle_data.distance = std::sqrt(dx * dx + dy * dy + dz * dz);
-                    
-                    sorted_mp_vehicles.push_back(vehicle_data);
-
-                    // Move to the next trailer in the chain
+                    if(sort_object.trailer_count >= 3)
+                    {
+                        break;
+                    }
+                    sort_object.trailers[sort_object.trailer_count] = trailer;
+                    sort_object.trailer_count++;
                     trailer = trailer->get_slave_trailer();
                 }
             }
             else
             {
                 mp_vehicle_sort vehicle_data = {};
-                vehicle_data.is_trailer = false;
-                vehicle_data.id = id;
 
+                // Physics vehicle (placement, rotation, dimensions)
                 auto *truck = static_cast<const prism::game_physics_vehicle_u *>(node->item);
+
                 prism::placement_t truck_placement;
                 truck->get_physics_placement(&truck_placement);
     
-                vehicle_data.x = truck_placement.cx * 512 + truck_placement.pos.x;
-                vehicle_data.y = truck_placement.pos.y;
-                vehicle_data.z = truck_placement.cz * 512 + truck_placement.pos.z;
-    
-                vehicle_data.qw = truck_placement.rot.w;
-                vehicle_data.qx = truck_placement.rot.x;
-                vehicle_data.qy = truck_placement.rot.y;
-                vehicle_data.qz = truck_placement.rot.z;
-    
-                vehicle_data.width = truck->dimensions.end.x - truck->dimensions.start.x;
-                vehicle_data.height = truck->dimensions.end.y - truck->dimensions.start.y;
-                vehicle_data.length = truck->dimensions.end.z - truck->dimensions.start.z;
-
-                // Distance to player
-                const float dx = vehicle_data.x - truck_x;
-                const float dy = vehicle_data.y - truck_y;
-                const float dz = vehicle_data.z - truck_z;
-                vehicle_data.distance = std::sqrt(dx * dx + dy * dy + dz * dz);
+                float x = truck_placement.cx * 512 + truck_placement.pos.x;
+                float y = truck_placement.pos.y;
+                float z = truck_placement.cz * 512 + truck_placement.pos.z;
                 
-                sorted_mp_vehicles.push_back(vehicle_data);
+                // Distance to player
+                const float dx = x - truck_x;
+                const float dy = y - truck_y;
+                const float dz = z - truck_z;
+                vehicle_data.distance = std::sqrt(dx * dx + dy * dy + dz * dz);
+
+                vehicle_data.id = id;
+                vehicle_data.truck = truck;
+                vehicle_data.trailer_count = 0;
+    
+                sorted.push_back(vehicle_data);
             }
     
             node = node->next;
         }
         
-        if (sorted_mp_vehicles.empty()) {
+        if (sorted.empty()) {
             return false;
         }
-        
         // Sort by distance
-        std::sort(sorted_mp_vehicles.begin(), sorted_mp_vehicles.end(), 
+        std::sort(sorted.begin(), sorted.end(),
             [](const mp_vehicle_sort& a, const mp_vehicle_sort& b) {
                 return a.distance < b.distance;
         });
@@ -408,37 +381,69 @@ namespace ets2_la_plugin
         TrafficMemData traffic_data = {};
         int max_vehicles = 40;
         int cur_count = 0;
-        for (const auto& mp_vehicle : sorted_mp_vehicles) {
+        for (mp_vehicle_sort mp_vehicle : sorted) {
             if (cur_count >= max_vehicles) {
                 break;
             }
-            
+
             TrafficVehicleObject vehicle_object = {};
             TrafficVehicle& vehicle = vehicle_object.vehicle;
+
+            auto* truck = static_cast<const prism::game_physics_vehicle_u *>(mp_vehicle.truck);
+            prism::placement_t truck_placement;
+            truck->get_physics_placement(&truck_placement);
             
-            vehicle.x = mp_vehicle.x;
-            vehicle.y = mp_vehicle.y;
-            vehicle.z = mp_vehicle.z;
+            vehicle.x = truck_placement.cx * 512 + truck_placement.pos.x;
+            vehicle.y = truck_placement.pos.y;
+            vehicle.z = truck_placement.cz * 512 + truck_placement.pos.z;
             
-            vehicle.qw = mp_vehicle.qw;
-            vehicle.qx = mp_vehicle.qx;
-            vehicle.qy = mp_vehicle.qy;
-            vehicle.qz = mp_vehicle.qz;
+            vehicle.qw = truck_placement.rot.w;
+            vehicle.qx = truck_placement.rot.x;
+            vehicle.qy = truck_placement.rot.y;
+            vehicle.qz = truck_placement.rot.z;
             
-            vehicle.width = mp_vehicle.width;
-            vehicle.height = mp_vehicle.height;
-            vehicle.length = mp_vehicle.length;
+            vehicle.width = truck->dimensions.end.x - truck->dimensions.start.x;
+            vehicle.height = truck->dimensions.end.y - truck->dimensions.start.y;
+            vehicle.length = truck->dimensions.end.z - truck->dimensions.start.z;
             
             vehicle.speed = 0.0f;
+            vehicle.acceleration = 0.0f;
 
             // is_tmp is used to differentiate between AI and TMP vehicles on the client
-            // TMP vehicles don't have speed or acceleration, and it has to be calculated at runtime
+            // TMP vehicles don't have speed, and it has to be calculated at runtime
             vehicle.is_tmp = true;
-            vehicle.is_trailer = mp_vehicle.is_trailer;
+            vehicle.is_trailer = false;
             
             vehicle.id = mp_vehicle.id;
-            vehicle.trailer_count = 0;
+            vehicle.trailer_count = mp_vehicle.trailer_count;
             
+            auto* trailers = mp_vehicle.trailers;
+            for (int i = 0; i < 3; i++)
+            {
+                if (trailers[i] != nullptr)
+                {
+                    TrafficTrailer trailer_data = {};
+
+                    prism::placement_t trailer_placement;
+                    trailers[i]->get_physics_placement(&trailer_placement);
+
+                    trailer_data.x = trailer_placement.cx * 512 + trailer_placement.pos.x;
+                    trailer_data.y = trailer_placement.pos.y;
+                    trailer_data.z = trailer_placement.cz * 512 + trailer_placement.pos.z;
+
+                    trailer_data.qw = trailer_placement.rot.w;
+                    trailer_data.qx = trailer_placement.rot.x;
+                    trailer_data.qy = trailer_placement.rot.y;
+                    trailer_data.qz = trailer_placement.rot.z;
+
+                    trailer_data.width = trailers[i]->dimensions.end.x - trailers[i]->dimensions.start.x;
+                    trailer_data.height = trailers[i]->dimensions.end.y - trailers[i]->dimensions.start.y;
+                    trailer_data.length = trailers[i]->dimensions.end.z - trailers[i]->dimensions.start.z;
+
+                    vehicle_object.trailers[i] = trailer_data;
+                }
+            }
+
             traffic_data.vehicles[cur_count] = vehicle_object;
             cur_count++;
         }

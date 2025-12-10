@@ -253,7 +253,7 @@ namespace ets2_la_plugin
             memcpy(static_cast<char*>(pBuf) + offset + 53, &data.vehicles[i].vehicle.is_trailer, sizeof(bool));
             offset += 54;
 
-            for (int j = 0; j < 2; j++) // Trailers
+            for (int j = 0; j < 3; j++) // Trailers
             {
                 memcpy(static_cast<char*>(pBuf) + offset, &data.vehicles[i].trailers[j].x, sizeof(float));
                 memcpy(static_cast<char*>(pBuf) + offset + 4, &data.vehicles[i].trailers[j].y, sizeof(float));
@@ -331,7 +331,7 @@ namespace ets2_la_plugin
     void CMemoryHandler::create_traffic_memory() const {
         //                   xyz    whl  tc is_tmp is_trailer
         wchar_t* vehicle = L"ffffffffffffbb??"; // 54 bytes
-        //                      wxyz  sa  id
+        //                      wxyz   sa id
 
         //                   xyz    whl
         wchar_t* trailer = L"ffffffffff";    // 40 bytes
@@ -340,7 +340,7 @@ namespace ets2_la_plugin
         // Concatenate vehicle + trailer + trailer
         size_t vehicle_len = wcslen(vehicle);
         size_t trailer_len = wcslen(trailer);
-        size_t vehicle_object_len = vehicle_len + 2 * trailer_len + 1; // +1 for null terminator
+        size_t vehicle_object_len = vehicle_len + 3 * trailer_len + 1; // +1 for null terminator
 
         wchar_t* vehicle_object = (wchar_t*)malloc(vehicle_object_len * sizeof(wchar_t));
         if (!vehicle_object) {
@@ -351,6 +351,7 @@ namespace ets2_la_plugin
         wcscpy(vehicle_object, vehicle); // Copy vehicle
         wcscat(vehicle_object, trailer); // Append trailer
         wcscat(vehicle_object, trailer); // Append trailer again
+        wcscat(vehicle_object, trailer); // Append trailer again again
 
         int vehicle_count = 40;
         size_t total_len = vehicle_count * vehicle_object_len + 1; // +1 for null terminator

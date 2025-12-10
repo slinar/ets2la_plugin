@@ -84,13 +84,14 @@ namespace ets2_la_plugin
     struct TrafficVehicleObject
     {
         TrafficVehicle vehicle;      // 0
-        TrafficTrailer trailers[2];  // 54
-                                     // 134
+        TrafficTrailer trailers[3];  // 54
+                                     // 174
     };
 
     struct TrafficMemData
     {
-        std::array<TrafficVehicleObject, 40> vehicles; // 5360
+        std::array<TrafficVehicleObject, 40> vehicles; // 0
+                                                       // 6800
     };
 
     struct SemaphoreObject
