@@ -322,6 +322,12 @@ namespace ets2_la_plugin
             {
                 auto* trailer = static_cast<prism::game_trailer_actor_u *>(node->item);
 
+                if (sorted.size() == 0)
+                {
+                    node = node->next;
+                    continue;
+                }
+
                 // All data goes as like this:
                 // Vehicle -> Trailer -> Trailer -> Vehicle
                 // Get the latest parent vehicle
@@ -344,6 +350,11 @@ namespace ets2_la_plugin
 
                 // Physics vehicle (placement, rotation, dimensions)
                 auto *truck = static_cast<const prism::game_physics_vehicle_u *>(node->item);
+                if (truck == nullptr)
+                {
+                    node = node->next;
+                    continue;
+                }
 
                 prism::placement_t truck_placement;
                 truck->get_physics_placement(&truck_placement);
@@ -371,6 +382,7 @@ namespace ets2_la_plugin
         if (sorted.empty()) {
             return false;
         }
+
         // Sort by distance
         std::sort(sorted.begin(), sorted.end(),
             [](const mp_vehicle_sort& a, const mp_vehicle_sort& b) {

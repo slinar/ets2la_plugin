@@ -230,7 +230,7 @@ namespace ets2_la_plugin
             return;
         }
 
-        void* pBuf = MapViewOfFile(traffic_h_map_file, FILE_MAP_ALL_ACCESS, 0, 0, sizeof(TrafficMemData));
+        void* pBuf = MapViewOfFile(traffic_h_map_file, FILE_MAP_ALL_ACCESS, 0, 0, 6960);
         int offset = 0;
 
         for (int i = 0; i < 40; i++)
@@ -330,7 +330,7 @@ namespace ets2_la_plugin
 
     void CMemoryHandler::create_traffic_memory() const {
         //                   xyz    whl  tc is_tmp is_trailer
-        wchar_t* vehicle = L"ffffffffffffbb??"; // 54 bytes
+        wchar_t* vehicle = L"ffffffffffffssbb"; // 54 bytes
         //                      wxyz   sa id
 
         //                   xyz    whl
