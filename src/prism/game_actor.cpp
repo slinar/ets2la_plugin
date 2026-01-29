@@ -13,7 +13,7 @@ namespace ets2_la_plugin::prism
 
     bool game_actor_u::scan_patterns()
     {
-        const auto throttle_addr = memory::get_address_for_pattern( patterns::game_actor_throttle_input_offset, 30 );
+        const auto throttle_addr = memory::get_address_for_pattern( patterns::game_actor_throttle_input_offset, 13 );
 
         if ( throttle_addr == 0 )
         {
@@ -21,7 +21,7 @@ namespace ets2_la_plugin::prism
         }
         game_actor_u::throttle_input_offset = *reinterpret_cast< uint32_t* >( throttle_addr );
 
-        const auto brake_addr = memory::get_address_for_pattern( patterns::game_actor_brake_input_offset, 30 );
+        const auto brake_addr = memory::get_address_for_pattern( patterns::game_actor_brake_input_offset, 13 );
 
         if ( brake_addr == 0 )
         {

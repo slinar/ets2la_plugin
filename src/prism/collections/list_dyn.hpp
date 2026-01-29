@@ -7,7 +7,8 @@ namespace ets2_la_plugin::prism
 {
     // Some of this is a pure guess, but it does seem to work
 
-    template < class T > class list_dyn_node_t
+    template < class T >
+    class list_dyn_node_t
     {
     public:
         list_dyn_node_t< T >* next;
@@ -15,7 +16,9 @@ namespace ets2_la_plugin::prism
         T item;
     };
 
-    template < class T > class list_dyn_t // Size: 0x0038
+    // Size: 0x0058
+    template < class T >
+    class list_dyn_t
     {
     public:
         uint64_t size;               // 0x0008 (0x08)
@@ -24,9 +27,10 @@ namespace ets2_la_plugin::prism
         T empty_item;                // 0x0020 (0x08)
         uint64_t capacity;           // 0x0028 (0x08)
         char pad_0030[ 8 ];          // 0x0030 (0x08)
+        array_dyn_t< class allocator_node_t* > allocator_nodes;
 
         virtual void destructor();
     };
-    static_assert( sizeof( list_dyn_t< void* > ) == 0x38 );
+    static_assert( sizeof( list_dyn_t< void* > ) == 0x58 );
 }
 #pragma pack( pop )
