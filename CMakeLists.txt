@@ -40,6 +40,6 @@ set_target_properties(${CMAKE_PROJECT_NAME} PROPERTIES MSVC_RUNTIME_LIBRARY "Mul
 
 add_subdirectory(vendor)
 
-target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE src vendor/scs_sdk/include vendor/minhook/include)
+target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE src vendor/scs_sdk/include)
 
-target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE fmt::fmt-header-only minhook)
+target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE fmt::fmt-header-only)

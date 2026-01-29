@@ -5,7 +5,6 @@
 #include "fmt/core.h"
 #include "array"
 
-#include "managers/hooks_manager.hpp"
 #include "memory/virtual/memory_handler.hpp"
 
 namespace ets2_la_plugin
@@ -63,7 +62,7 @@ namespace ets2_la_plugin
         short id;              // 50
         bool is_tmp;           // 52
         bool is_trailer;       // 53
-                               // 54    
+                               // 54
     };
 
     struct TrafficTrailer
@@ -138,7 +137,6 @@ namespace ets2_la_plugin
 
         mutable size_t last_route_length_{0};
 
-        CHooksManager *hooks_manager_;
         CMemoryHandler *memory_manager_;
 
         bool scan_for_required_patterns();
@@ -163,9 +161,6 @@ namespace ets2_la_plugin
 
         void tick() const;
 
-        bool init_truck_steering_manipulation() const;
-
-        CHooksManager *get_hooks_manager() const { return this->hooks_manager_; }
         CMemoryHandler *get_memory_manager() const { return this->memory_manager_; }
 
         // TODO: change to file only or something

@@ -1,7 +1,5 @@
 ﻿#include "core.hpp"
 
-#include <MinHook.h>
-
 #include "consts.hpp"
 
 #include "memory/memory_utils.hpp"
@@ -26,8 +24,6 @@
 
 #include "prism/navigation/route_task.hpp"
 
-#include "hooks/function_hook.hpp"
-#include "prism/functions.hpp"
 #include "prism/vehicles/game_physics_vehicle.hpp"
 #include "prism/vehicles/game_trailer_actor.hpp"
 #include "prism/game_actor.hpp"
@@ -43,52 +39,14 @@
 namespace ets2_la_plugin
 {
     CCore *CCore::g_instance = nullptr;
-    std::shared_ptr<CFunctionHook> steering_advance_hook = nullptr;
-
-    bool should_override_steering = false;
-    bool should_override_throttle = false;
-    bool should_override_brake = false;
-    float custom_steering_angle = 0.0f;
-    float custom_throttle_input = 0.0f;
-    float custom_brake_input = 0.0f;
 
     SCSAPI_VOID telemetry_tick(const scs_event_t event, const void *const event_info, scs_context_t context)
     {
         CCore::g_instance->tick();
     }
 
-    /**
-     * \brief Hook for prism::game_physics_vehicle_u::steering_advance so we can override the user input
-     * \param self /
-     * \return /
-     */
-    uint64_t hk_steering_advance(prism::game_physics_vehicle_u *self)
-    {
-        if (should_override_steering)
-        {
-            self->set_steering_angle(custom_steering_angle);
-        }
-
-        auto* game_actor = prism::game_actor_u::get();
-        if (game_actor != nullptr)
-        {
-            if (should_override_throttle) 
-            {
-                game_actor->set_throttle_input(custom_throttle_input);
-            }
-
-            if (should_override_brake)
-            {
-                game_actor->set_brake_input(custom_brake_input);
-            }
-        }
-
-        return steering_advance_hook->get_original<prism::game_physics_vehicle_u_steering_advance_fn>()(self);
-    }
-
     CCore::CCore(const scs_telemetry_init_params_v101_t *init_params) : init_params_(init_params)
     {
-        this->hooks_manager_ = new CHooksManager();
         scs_log_ = init_params->common.log;
         memory_manager_ = new CMemoryHandler(scs_log_);
         g_instance = this;
@@ -97,7 +55,6 @@ namespace ets2_la_plugin
     CCore::~CCore()
     {
         this->destroy();
-        MH_RemoveHook(nullptr);
     }
 
     void CCore::get_camera_data() const
@@ -279,15 +236,15 @@ namespace ets2_la_plugin
         {
             return false;
         }
-    
+
         const auto truck_pos = this->truck_pos;
         const auto truck_x = truck_pos.position.x;
         const auto truck_y = truck_pos.position.y;
         const auto truck_z = truck_pos.position.z;
-        
+
         std::vector<mp_vehicle_sort> sorted;
         static prism::unit_descriptor_t *stored_game_trailer_actor_unit_descriptor = nullptr;
-        
+
         // Static map for unique IDs
         static std::map<const void*, int> mp_vehicle_uids;
         static int next_mp_vehicle_id = 1000; // From 1000 to differentiate from AI traffic
@@ -297,7 +254,7 @@ namespace ets2_la_plugin
         {
             return false; // No vehicles list available
         }
-    
+
         auto* node = vehicles_list->begin;
         while(node->item != vehicles_list->empty_item)
         {
@@ -310,14 +267,14 @@ namespace ets2_la_plugin
                     stored_game_trailer_actor_unit_descriptor = unit_descriptor;
                 }
             }
-    
+
             const auto is_trailer = stored_game_trailer_actor_unit_descriptor == unit_descriptor;
             // Unique ID if not already assigned
             if (mp_vehicle_uids.find(node->item) == mp_vehicle_uids.end()) {
                 mp_vehicle_uids[node->item] = next_mp_vehicle_id++;
             }
             int id = mp_vehicle_uids[node->item];
-    
+
             if (is_trailer)
             {
                 auto* trailer = static_cast<prism::game_trailer_actor_u *>(node->item);
@@ -358,11 +315,11 @@ namespace ets2_la_plugin
 
                 prism::placement_t truck_placement;
                 truck->get_physics_placement(&truck_placement);
-    
+
                 float x = truck_placement.cx * 512 + truck_placement.pos.x;
                 float y = truck_placement.pos.y;
                 float z = truck_placement.cz * 512 + truck_placement.pos.z;
-                
+
                 // Distance to player
                 const float dx = x - truck_x;
                 const float dy = y - truck_y;
@@ -372,13 +329,13 @@ namespace ets2_la_plugin
                 vehicle_data.id = id;
                 vehicle_data.truck = truck;
                 vehicle_data.trailer_count = 0;
-    
+
                 sorted.push_back(vehicle_data);
             }
-    
+
             node = node->next;
         }
-        
+
         if (sorted.empty()) {
             return false;
         }
@@ -404,20 +361,20 @@ namespace ets2_la_plugin
             auto* truck = static_cast<const prism::game_physics_vehicle_u *>(mp_vehicle.truck);
             prism::placement_t truck_placement;
             truck->get_physics_placement(&truck_placement);
-            
+
             vehicle.x = truck_placement.cx * 512 + truck_placement.pos.x;
             vehicle.y = truck_placement.pos.y;
             vehicle.z = truck_placement.cz * 512 + truck_placement.pos.z;
-            
+
             vehicle.qw = truck_placement.rot.w;
             vehicle.qx = truck_placement.rot.x;
             vehicle.qy = truck_placement.rot.y;
             vehicle.qz = truck_placement.rot.z;
-            
+
             vehicle.width = truck->dimensions.end.x - truck->dimensions.start.x;
             vehicle.height = truck->dimensions.end.y - truck->dimensions.start.y;
             vehicle.length = truck->dimensions.end.z - truck->dimensions.start.z;
-            
+
             vehicle.speed = 0.0f;
             vehicle.acceleration = 0.0f;
 
@@ -425,10 +382,10 @@ namespace ets2_la_plugin
             // TMP vehicles don't have speed, and it has to be calculated at runtime
             vehicle.is_tmp = true;
             vehicle.is_trailer = false;
-            
+
             vehicle.id = mp_vehicle.id;
             vehicle.trailer_count = mp_vehicle.trailer_count;
-            
+
             auto* trailers = mp_vehicle.trailers;
             for (int i = 0; i < 3; i++)
             {
@@ -459,7 +416,7 @@ namespace ets2_la_plugin
             traffic_data.vehicles[cur_count] = vehicle_object;
             cur_count++;
         }
-        
+
         if (cur_count > 0) {
             // Write the data to memory
             this->memory_manager_->write_traffic_mem(traffic_data);
@@ -701,12 +658,12 @@ namespace ets2_la_plugin
         // Get input data from the shared memory file
         InputMemData data = this->memory_manager_->read_input_mem();
 
-        should_override_steering = data.override_steering;
-        should_override_brake = data.override_brake;
-        should_override_throttle = data.override_throttle;
-        custom_steering_angle = data.steering;
-        custom_throttle_input = data.throttle;
-        custom_brake_input = data.brake;
+        auto should_override_steering = data.override_steering;
+        auto should_override_brake = data.override_brake;
+        auto should_override_throttle = data.override_throttle;
+        const auto custom_steering_angle = data.steering;
+        const auto custom_throttle_input = data.throttle;
+        const auto custom_brake_input = data.brake;
 
         int timestamp = data.timestamp;
         int current_time = std::time(0);
@@ -716,27 +673,25 @@ namespace ets2_la_plugin
             should_override_brake = false;
             should_override_throttle = false;
         }
-    }
 
-    bool CCore::init_truck_steering_manipulation() const
-    {
-        // using pattern instead of the vtable hook that I used previously, this way we don't have to keep checking in a loop until a vehicle exists
-        const auto physics_vehicle_u_steering_advance_fn_address = memory::get_address_for_pattern(patterns::physics_vehicle_u_steering_advance);
+        auto* game_actor = prism::game_actor_u::get();
 
-        steering_advance_hook = g_instance->get_hooks_manager()->register_function_hook(
-            "physics_vehicle_u::steering_advance",
-            physics_vehicle_u_steering_advance_fn_address,
-            reinterpret_cast<uint64_t>(&hk_steering_advance));
+        if (game_actor != nullptr) {
+            if (should_override_steering && game_actor->game_physics_vehicle != nullptr)
+            {
+                game_actor->game_physics_vehicle->set_steering_angle(custom_steering_angle);
+            }
 
-        if (steering_advance_hook->hook() != CHook::HOOKED)
-        {
-            g_instance->error("Could not hook the physics_vehicle_u::steering_advance function");
-            return false;
+            if (should_override_throttle)
+            {
+                game_actor->set_throttle_input(custom_throttle_input);
+            }
+
+            if (should_override_brake)
+            {
+                game_actor->set_brake_input(custom_brake_input);
+            }
         }
-
-        g_instance->debug("Found physics_vehicle_u::steering_advance function @ +{:x}", memory::as_offset(physics_vehicle_u_steering_advance_fn_address));
-
-        return true;
     }
 
     bool CCore::scan_for_required_patterns()
@@ -815,7 +770,6 @@ namespace ets2_la_plugin
 
     bool CCore::init()
     {
-        MH_Initialize();
         this->info("Initializing {}", VERSION);
         this->info("Expected game version: {}", GAME_VERSION);
 
@@ -858,18 +812,11 @@ namespace ets2_la_plugin
             return false;
         }
 
-        if (!this->init_truck_steering_manipulation())
-        {
-            this->error("Could not initialize truck steering data");
-            return false;
-        }
-
         return true;
     }
 
     void CCore::destroy()
     {
         delete this->memory_manager_;
-        delete this->hooks_manager_;
     }
 }

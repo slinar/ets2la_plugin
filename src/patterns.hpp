@@ -26,15 +26,6 @@ namespace ets2_la_plugin::patterns
         "48 8b 83 ? ? ? ? " // mov rax, [rbx+xxxh]
         "48 85 c0";         // test rax, rax
 
-    // start of the function
-    // 40 53 48 81 ec ? ? ? ? 48 8b 05 ? ? ? ? 48 8b d9 0f 29 74
-    inline constexpr auto physics_vehicle_u_steering_advance =
-        "40 53 "            // push rbx
-        "48 81 ec ? ? ? ? " // sub rsp, xxh
-        "48 8b 05 ? ? ? ? " // mov rax, cs:xxx (base_ctrl offset)
-        "48 8b d9 "         // mov rbx, rcx
-        "0f 29 74";         // movaps ...
-
     // 48 8d b7 ? ? ? ? 0f 57 c9
     inline constexpr auto gps_manager =
         "48 8D B7 ? ? ? ? " // lea rsi, [rdi + xxxxh] (gps_manager offset in game_ctrl)
