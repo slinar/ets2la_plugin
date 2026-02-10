@@ -1,11 +1,11 @@
 cmake_minimum_required(VERSION 3.15)
 
 set(PLUGIN_VERSION_MAJOR 1)
-set(PLUGIN_VERSION_MINOR 57)
+set(PLUGIN_VERSION_MINOR 58)
 set(PLUGIN_VERSION_PATCH 0)
 
 set(GAME_VERSION_MAJOR 1)
-set(GAME_VERSION_MINOR 57)
+set(GAME_VERSION_MINOR 58)
 set(GAME_VERSION_PATCH x)
 
 project(ets2_la_plugin VERSION ${PLUGIN_VERSION_MAJOR}.${PLUGIN_VERSION_MINOR}.${PLUGIN_VERSION_PATCH})
@@ -40,6 +40,6 @@ set_target_properties(${CMAKE_PROJECT_NAME} PROPERTIES MSVC_RUNTIME_LIBRARY "Mul
 
 add_subdirectory(vendor)
 
-target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE src vendor/scs_sdk/include vendor/minhook/include)
+target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE src vendor/scs_sdk/include)
 
-target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE fmt::fmt-header-only minhook)
+target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE fmt::fmt-header-only)
