@@ -9,7 +9,7 @@ namespace ets2_la_plugin::prism
 
     bool vehicle_shared_u::scan_patterns()
     {
-        const auto addr = memory::get_address_for_pattern( patterns::vehicle_shared_u_steering_offset, 4 );
+        const auto addr = memory::get_address_for_pattern( patterns::vehicle_shared_u_steering_offset, 6 );
 
         if ( addr == 0 )
         {

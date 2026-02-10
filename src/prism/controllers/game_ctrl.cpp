@@ -6,21 +6,11 @@
 
 namespace ets2_la_plugin::prism
 {
-    uint32_t game_ctrl_u::some_nearby_non_ai_vehicles_offset = 0;
-    uint32_t game_ctrl_u::gps_manager_offset                 = 0;
+    uint32_t game_ctrl_u::gps_manager_offset = 0;
 
     bool game_ctrl_u::scan_patterns()
     {
-        const auto tmp_vehicles_addr =
-            memory::get_address_for_pattern( patterns::game_ctrl_u_some_nearby_non_ai_vehicles, 8 );
-
-        if ( tmp_vehicles_addr == 0 )
-        {
-            throw std::runtime_error( "Failed to find TMP vehicle list offset" );
-        }
-        game_ctrl_u::some_nearby_non_ai_vehicles_offset = *reinterpret_cast< uint32_t* >( tmp_vehicles_addr );
-
-        const auto gps_manager_addr = memory::get_address_for_pattern( patterns::gps_manager, 5 );
+        const auto gps_manager_addr = memory::get_address_for_pattern( patterns::gps_manager, 3 );
         if ( gps_manager_addr == 0 )
         {
             throw std::runtime_error( "Failed to find gps_manager offset" );
@@ -60,19 +50,5 @@ namespace ets2_la_plugin::prism
         {
             return nullptr;
         }
-    }
-
-    // contains TruckerMP nearby players' trucks and trailers
-    // also contains trucks and trailers in menus (background/service center/truck dealer/etc...)
-    list_dyn_t< class vehicle_shared_u* >* game_ctrl_u::get_some_nearby_non_ai_vehicles_list() const
-    {
-        if ( game_ctrl_u::some_nearby_non_ai_vehicles_offset != 0 )
-        {
-            return reinterpret_cast< list_dyn_t< class vehicle_shared_u* >* >(
-                reinterpret_cast< uint64_t >( this ) + game_ctrl_u::some_nearby_non_ai_vehicles_offset
-            );
-        }
-
-        return nullptr;
     }
 }

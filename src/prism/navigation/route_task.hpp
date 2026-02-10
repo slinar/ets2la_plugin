@@ -49,23 +49,21 @@ namespace ets2_la_plugin::prism
     };
     static_assert( sizeof( physical_route_item_t ) == 0x20 );
 
-    // Size: 0x0150 1.57
+    // Size: 0x0138 1.58
     class route_task_t : public /* [0x38] @ 0x00 */ thread::task_t
     {
     public:
         char pad_0038[ 24 ];                                        // 0x0038 (0x18)
         array_dyn_t< physical_route_item_t > physical_route_items;  // 0x0050 (0x20) node to node
         array_dyn_t< route_item_t > route_items;                    // 0x0070 (0x20)
-        char pad_0090[ 24 ];                                        // 0x0090 (0x18)
-        array_dyn_t< token_t > N00007005;                           // 0x00A8 (0x20)
-        char pad_00C8[ 8 ];                                         // 0x00C8 (0x08)
-        array_dyn_t< class private_route_task_target_t > N000071A4; // 0x00D0 (0x20)
-        char pad_00F0[ 24 ];                                        // 0x00F0 (0x18)
-        array_dyn_t< uint32_t > N00007011;                          // 0x0108 (0x20)
-        char pad_0128[ 8 ];                                         // 0x0128 (0x08)
-        array_dyn_t< uint64_t > N00007013;                          // 0x0130 (0x20)
+        char pad_0090[ 40 ];                                        // 0x0090 (0x28)
+        array_dyn_t< class private_route_task_target_t > N000071A4; // 0x00B8 (0x20)
+        char pad_00D8[ 24 ];                                        // 0x00D8 (0x18)
+        array_dyn_t< uint32_t > N00007011;                          // 0x00F0 (0x20)
+        char pad_0110[ 8 ];                                         // 0x0110 (0x08)
+        array_dyn_t< uint64_t > N00007013;                          // 0x0118 (0x20)
     };
-    static_assert( sizeof( route_task_t ) == 0x150 );
+    static_assert( sizeof( route_task_t ) == 0x138 );
 
 }
 
